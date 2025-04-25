@@ -42,7 +42,23 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
 ]));
 
 $response = curl_exec($ch);
-$error = curl_error($ch);
-curl_close($ch);
+if (!$response) {
+  echo json_encode(["error" => $error ?: "Нет ответа от OpenAI"]);
+  exit;
+}
 
-echo $response ?: json_encode(["error" => $error]);
+// Декодируем ответ, чтобы отловить ошибки OpenAI
+$decoded = json_decode($response, true);
+
+if (isset($decoded["error"])) {
+  http_response_code(500);
+  echo json_encode([
+    "error" => $decoded["error"]["message"] ?? "Неизвестная ошибка от OpenAI"
+  ]);
+  exit;
+}
+
+// Всё хорошо — отдаём ответ как есть
+http_response_code(200);
+echo json_encode($decoded);
+
