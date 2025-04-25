@@ -1,15 +1,16 @@
 <?php
-// 🔓 CORS preflight для браузеров
+// ✅ Обработка preflight запроса (OPTIONS)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   header('Access-Control-Allow-Origin: *');
   header('Access-Control-Allow-Methods: POST, OPTIONS');
   header('Access-Control-Allow-Headers: Content-Type');
-  header('Access-Control-Max-Age: 86400');
   http_response_code(200);
   exit;
 }
 
+// ✅ Заголовки CORS для обычных POST-запросов
 header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
 
 $input = json_decode(file_get_contents("php://input"), true);
@@ -21,8 +22,9 @@ if (!$prompt) {
   exit;
 }
 
+// 🔑 API-ключ в .env
 $apiKey = getenv("OPENAI_API_KEY");
-$orgId = getenv("OPENAI_ORG_ID"); 
+$orgId = getenv("OPENAI_ORG_ID");
 
 $ch = curl_init("https://api.openai.com/v1/chat/completions");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -35,6 +37,7 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
 
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
   "model" => "gpt-4o",
+  "temperature" => 0.5,
   "messages" => [
     ["role" => "system", "content" => "Ты профессиональный бизнес-консультант."],
     ["role" => "user", "content" => $prompt]
@@ -42,23 +45,8 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
 ]));
 
 $response = curl_exec($ch);
-if (!$response) {
-  echo json_encode(["error" => $error ?: "Нет ответа от OpenAI"]);
-  exit;
-}
+$error = curl_error($ch);
+curl_close($ch);
 
-// Декодируем ответ, чтобы отловить ошибки OpenAI
-$decoded = json_decode($response, true);
-
-if (isset($decoded["error"])) {
-  http_response_code(500);
-  echo json_encode([
-    "error" => $decoded["error"]["message"] ?? "Неизвестная ошибка от OpenAI"
-  ]);
-  exit;
-}
-
-// Всё хорошо — отдаём ответ как есть
-http_response_code(200);
-echo json_encode($decoded);
-
+// ✅ Вернём либо ответ, либо ошибку
+echo $response ?: json_encode(["error" => $error]);
