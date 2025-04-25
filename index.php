@@ -21,8 +21,8 @@ if (!$prompt) {
   exit;
 }
 
-$apiKey = "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";
-$orgId = "org-ALAo7jBvLczBCPT91tLB7hXP";
+$apiKey = getenv("OPENAI_API_KEY");
+$orgId = getenv("OPENAI_ORG_ID"); 
 
 $ch = curl_init("https://api.openai.com/v1/chat/completions");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
