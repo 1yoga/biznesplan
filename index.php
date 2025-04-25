@@ -1,4 +1,10 @@
 <?php
+require 'vendor/autoload.php';
+
+use Dompdf\Dompdf;
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
 // ✅ Preflight-запрос от браузера (CORS)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   header('Access-Control-Allow-Origin: *');
@@ -41,7 +47,7 @@ $payload = json_encode([
   "temperature" => 0.5,
   "max_tokens" => 8192,
   "messages" => [
-    ["role" => "system", "content" => "Ты профессиональный бизнес-консультант."],
+    ["role" => "system", "content" => "Ты — профессиональный бизнес-консультант с опытом подготовки заявок на гранты, кредиты и субсидии. Генерируй бизнес-планы в структурированном, формальном, экспертном стиле, с конкретными цифрами, без воды."],
     ["role" => "user", "content" => $prompt]
   ]
 ]);
