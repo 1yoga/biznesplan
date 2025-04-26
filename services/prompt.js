@@ -109,6 +109,6 @@ ${parts.join('\n')}
     }
   } catch (err) {
     console.error('❌ Ошибка при генерации промпта:', err.message, err.stack);
-    throw err; 
+    throw err;
   }
 };
