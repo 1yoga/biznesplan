@@ -3,38 +3,38 @@ const path = require('path');
 
 module.exports = function generatePDF(text) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({
-      size: 'A4',
-      margins: { top: 70, bottom: 70, left: 70, right: 70 } // Широкие отступы
-    });
-
+    const doc = new PDFDocument({ margin: 50 });
     const chunks = [];
 
     doc.on('data', (chunk) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    // Подключаем красивый шрифт Roboto
+    // Нормальный шрифт
     doc.font(path.join(__dirname, 'fonts', 'Roboto-Regular.ttf'))
-       .fontSize(12)
-       .fillColor('#000000') // Чёрный цвет текста
-       .lineGap(6) // Межстрочный интервал
-       .text(text, {
-         width: 450,
-         align: 'justify' // Выравнивание по ширине
-       });
+       .fontSize(12);
 
-    // Добавляем номера страниц
-    const range = doc.bufferedPageRange(); // получаем диапазон страниц
-    for (let i = 0; i < range.count; i++) {
-      doc.switchToPage(i);
-      doc.fontSize(10)
-         .fillColor('gray')
-         .text(`Стр. ${i + 1} из ${range.count}`, 0, doc.page.height - 50, {
-           align: 'center'
-         });
+    // Разбиваем текст на параграфы
+    const paragraphs = text.split(/\n\s*\n/);
+
+    for (let i = 0; i < paragraphs.length; i++) {
+      const paragraph = paragraphs[i].trim();
+
+      if (paragraph) {
+        doc.text(paragraph, {
+          width: 450,
+          align: 'justify',
+          lineGap: 4
+        });
+        doc.moveDown(); // Отступ между абзацами
+
+        // Опционально: если текст слишком длинный — вручную добавить страницу
+        if (doc.y > 700) { // Если текст ушёл ниже 700 по высоте страницы
+          doc.addPage();
+        }
+      }
     }
 
     doc.end();
   });
-};
+}

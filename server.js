@@ -22,8 +22,6 @@ app.post('/generate', async (req, res) => {
   const { data } = req.body;
   if (!data) return res.status(400).json({ error: 'Нет данных формы' });
 
-  console.log('📥 Получены данные формы:', JSON.stringify(data, null, 2)); // 👈 красиво выводим
-
   try {
     const prompt = generatePrompt(data);
 
