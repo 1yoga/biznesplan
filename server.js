@@ -28,4 +28,5 @@ app.post('/generate', async (req, res) => {
   }
 })
 
-app.listen(3003, () => console.log('🚀 Server on http://localhost:3003'))
+app.listen(process.env.PORT || 3003, () => console.log(`🚀 Server on port ${process.env.PORT || 3003}`));
+
