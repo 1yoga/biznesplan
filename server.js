@@ -10,13 +10,16 @@ const sendMail = require('./services/mailer')
 app.use(cors())
 app.use(express.json())
 
-app.post('/', async (req, res) => {
+app.post('/generate', async (req, res) => {
   const { prompt } = req.body
   if (!prompt) return res.status(400).json({ error: 'Нет prompt' })
 
   try {
+    console.log('generatePlan')
     const plan = await generatePlan(prompt)
+    console.log('generatePDF')
     const pdfBuffer = await generatePDF(plan)
+    console.log('sendMail')
     await sendMail(pdfBuffer)
 
     res.json({ success: true, message: 'Письмо отправлено' })
@@ -25,4 +28,4 @@ app.post('/', async (req, res) => {
   }
 })
 
-app.listen(3000, () => console.log('🚀 Server on http://localhost:3000'))
+app.listen(3003, () => console.log('🚀 Server on http://localhost:3003'))
