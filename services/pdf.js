@@ -1,4 +1,5 @@
 const PDFDocument = require('pdfkit')
+const path = require('path')
 
 module.exports = function generatePDF(text) {
   return new Promise((resolve, reject) => {
@@ -9,10 +10,14 @@ module.exports = function generatePDF(text) {
     doc.on('end', () => resolve(Buffer.concat(chunks)))
     doc.on('error', reject)
 
-    doc.font('Times-Roman').fontSize(12).text(text, {
-      width: 450,
-      align: 'left'
-    })
+    // Подключаем нормальный шрифт
+    doc.font(path.join(__dirname, 'fonts', 'Roboto-Regular.ttf'))
+       .fontSize(12)
+       .text(text, {
+         width: 450,
+         align: 'left'
+       })
+
     doc.end()
   })
 }
