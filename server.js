@@ -12,7 +12,7 @@ const corsOptions = {
   origin: 'https://biznesplan.online',
   methods: ['POST'],
   allowedHeaders: ['Content-Type'],
-  optionsSuccessStatus: 200, 
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
@@ -25,18 +25,22 @@ app.post('/generate', async (req, res) => {
   try {
     console.log('generatePlan');
     const plan = await generatePlan(prompt);
+
     console.log('generatePDF');
     const pdfBuffer = await generatePDF(plan);
+
     console.log('sendMail');
     await sendMail(pdfBuffer);
 
-    res.json({ success: true, message: 'Письмо отправлено' });
+    return res.status(200).json({ success: true, message: 'Письмо отправлено' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    // ⚡ Логируем ошибку на сервере
+    console.error('Ошибка генерации бизнес-плана или отправки письма:', err);
+
+    return res.status(500).json({ success: false, message: err.message || 'Ошибка сервера' });
   }
 });
 
-// 🚀 Запуск сервера
 app.listen(process.env.PORT || 3003, () =>
   console.log(`🚀 Server on port ${process.env.PORT || 3003}`)
 );

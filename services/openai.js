@@ -5,7 +5,6 @@ const openai = new OpenAI({
 })
 
 module.exports = async function generatePlan(prompt) {
-  console.log('generatePlan1')
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o',
     temperature: 0.5,

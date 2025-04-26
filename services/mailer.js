@@ -1,6 +1,6 @@
 const nodemailer = require('nodemailer');
 
-module.exports = async function sendMail(buffer) {
+module.exports = async function sendMail(buffer, email) {
   console.log('📨 Инициализация отправки письма...');
 
   try {
@@ -19,7 +19,7 @@ module.exports = async function sendMail(buffer) {
 
     const info = await transporter.sendMail({
       from: process.env.SMTP_USER,
-      to: process.env.MAIL_TO,
+      to: email,
       subject: 'Ваш бизнес-план готов',
       text: 'Во вложении PDF с вашим бизнес-планом.',
       attachments: [
