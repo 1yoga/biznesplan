@@ -7,22 +7,19 @@ const generatePlan = require('./services/openai')
 const generatePDF = require('./services/pdf')
 const sendMail = require('./services/mailer')
 
-// 🔥 Общие настройки CORS
-app.use(cors({
+const corsOptions = {
   origin: 'https://biznesplan.online',
   methods: ['POST'],
-  allowedHeaders: ['Content-Type']
-}))
-app.use(express.json())
+  allowedHeaders: ['Content-Type'],
+  optionsSuccessStatus: 204 // 👈 чтобы OPTIONS всегда завершался удачно
+};
 
-// 🔥 Обработка предварительного запроса (OPTIONS)
-app.options('/generate', cors({
-  origin: 'https://biznesplan.online',
-  methods: ['POST'],
-  allowedHeaders: ['Content-Type']
-}))
+app.use(cors(corsOptions));
 
-// 🔥 Основной POST-обработчик
+app.options('*', cors(corsOptions));
+
+app.options('/generate', cors(corsOptions));
+
 app.post('/generate', async (req, res) => {
   const { prompt } = req.body
   if (!prompt) return res.status(400).json({ error: 'Нет prompt' })
