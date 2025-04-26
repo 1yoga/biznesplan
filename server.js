@@ -6,41 +6,42 @@ const app = express();
 const generatePlan = require('./services/openai');
 const generatePDF = require('./services/pdf');
 const sendMail = require('./services/mailer');
+const generatePrompt = require('./services/prompt'); // ⬅
 
-// ✅ Настраиваем правильный CORS
 const corsOptions = {
   origin: 'https://biznesplan.online',
   methods: ['POST'],
   allowedHeaders: ['Content-Type'],
-  optionsSuccessStatus: 200,
+  optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
 app.use(express.json());
 
 app.post('/generate', async (req, res) => {
-  const { prompt } = req.body;
-  if (!prompt) return res.status(400).json({ error: 'Нет prompt' });
+  const { data } = req.body;
+  if (!data) return res.status(400).json({ error: 'Нет данных формы' });
+
+  console.log('📥 Получены данные формы:', JSON.stringify(data, null, 2)); // 👈 красиво выводим
 
   try {
-    console.log('generatePlan');
+    const prompt = generatePrompt(data);
+
+    console.log('✍️ Сформированный промпт для GPT:\n', prompt); // 👈 тоже логируем
+
     const plan = await generatePlan(prompt);
 
-    console.log('generatePDF');
     const pdfBuffer = await generatePDF(plan);
 
-    console.log('sendMail');
-    await sendMail(pdfBuffer);
+    await sendMail(pdfBuffer, data['wpforms[fields][20]']); // почта пользователя
 
-    return res.status(200).json({ success: true, message: 'Письмо отправлено' });
+    res.json({ success: true, message: 'Письмо отправлено' });
+
   } catch (err) {
-    // ⚡ Логируем ошибку на сервере
-    console.error('Ошибка генерации бизнес-плана или отправки письма:', err);
-
-    return res.status(500).json({ success: false, message: err.message || 'Ошибка сервера' });
+    console.error('❌ Ошибка:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-app.listen(process.env.PORT || 3003, () =>
-  console.log(`🚀 Server on port ${process.env.PORT || 3003}`)
-);
+const PORT = process.env.PORT || 3003;
+app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
