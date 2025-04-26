@@ -7,7 +7,13 @@ const generatePlan = require('./services/openai')
 const generatePDF = require('./services/pdf')
 const sendMail = require('./services/mailer')
 
-app.use(cors())
+// 🔥 Вот здесь делаем правильный CORS
+app.use(cors({
+  origin: 'https://biznesplan.online', // 👈 Разрешаем только твой сайт
+  methods: ['POST'],                    // 👈 Разрешаем только POST
+  allowedHeaders: ['Content-Type']      // 👈 Разрешаем нужные заголовки
+}))
+
 app.use(express.json())
 
 app.post('/generate', async (req, res) => {
@@ -28,5 +34,7 @@ app.post('/generate', async (req, res) => {
   }
 })
 
-app.listen(process.env.PORT || 3003, () => console.log(`🚀 Server on port ${process.env.PORT || 3003}`));
-
+// 🚀 Слушаем порт
+app.listen(process.env.PORT || 3003, () =>
+  console.log(`🚀 Server on port ${process.env.PORT || 3003}`)
+)
