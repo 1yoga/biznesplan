@@ -6,6 +6,7 @@ module.exports = function generatePDF(text) {
     const doc = new PDFDocument({
       size: 'A4',
       margin: 50,
+      bufferPages: true,
       info: {
         Title: 'Бизнес-план',
         Author: 'Бизнес-план.онлайн',
@@ -19,12 +20,16 @@ module.exports = function generatePDF(text) {
     doc.on('error', reject);
 
     // Нормальный шрифт
-    doc.font(path.join(__dirname, 'fonts', 'Roboto-Regular.ttf'))
+    const regularFont = path.join(__dirname, 'fonts', 'Roboto-Regular.ttf');
+    const boldFont = path.join(__dirname, 'fonts', 'Roboto-Bold.ttf');
+
+    doc.font(regularFont)
        .fontSize(12)
        .fillColor('#000000');
 
     // Титульный лист
-    doc.fontSize(20)
+    doc.fontSize(24)
+       .font(boldFont)
        .text('БИЗНЕС-ПЛАН', {
          align: 'center',
          underline: true
@@ -33,6 +38,7 @@ module.exports = function generatePDF(text) {
     doc.moveDown(2);
 
     doc.fontSize(16)
+       .font(regularFont)
        .text('Подается для получения финансовой поддержки', {
          align: 'center'
        });
@@ -50,59 +56,58 @@ module.exports = function generatePDF(text) {
     doc.addPage(); // Новый лист после титула
 
     // Тело бизнес-плана
-    doc.fontSize(12);
-
     const paragraphs = text.split(/\n\s*\n/);
 
-    for (let i = 0; i < paragraphs.length; i++) {
-      const paragraph = paragraphs[i].trim();
+    paragraphs.forEach((paragraph) => {
+      const trimmed = paragraph.trim();
+      if (!trimmed) return;
 
-      if (paragraph) {
-        // Заголовки (если текст начинается с ### или **)
-        if (paragraph.startsWith('###')) {
-          doc.moveDown(1);
-          doc.fontSize(16)
-             .font(path.join(__dirname, 'fonts', 'Roboto-Bold.ttf'))
-             .text(paragraph.replace(/^###\s*/, ''), {
-               align: 'left'
-             });
-          doc.moveDown(0.5);
-          doc.fontSize(12)
-             .font(path.join(__dirname, 'fonts', 'Roboto-Regular.ttf'));
-        } else if (paragraph.startsWith('**') && paragraph.endsWith('**')) {
-          doc.moveDown(1);
-          doc.fontSize(14)
-             .font(path.join(__dirname, 'fonts', 'Roboto-Bold.ttf'))
-             .text(paragraph.replace(/\*\*/g, ''), {
-               align: 'left'
-             });
-          doc.moveDown(0.5);
-          doc.fontSize(12)
-             .font(path.join(__dirname, 'fonts', 'Roboto-Regular.ttf'));
-        } else {
-          // Обычный параграф
-          doc.text(paragraph, {
-            width: 450,
-            align: 'justify',
-            lineGap: 6
-          });
-          doc.moveDown();
-        }
-
-        // Перенос на новую страницу, если текст ушёл слишком низко
-        if (doc.y > 700) {
-          doc.addPage();
-        }
+      if (trimmed.startsWith('###')) {
+        // Большие заголовки
+        doc.moveDown(1);
+        doc.font(boldFont)
+           .fontSize(18)
+           .text(trimmed.replace(/^###\s*/, ''), {
+             align: 'left'
+           });
+        doc.moveDown(0.5);
+        doc.font(regularFont)
+           .fontSize(12);
+      } else if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
+        // Подзаголовки
+        doc.moveDown(1);
+        doc.font(boldFont)
+           .fontSize(14)
+           .text(trimmed.replace(/\*\*/g, ''), {
+             align: 'left'
+           });
+        doc.moveDown(0.5);
+        doc.font(regularFont)
+           .fontSize(12);
+      } else {
+        // Обычный параграф
+        doc.font(regularFont)
+           .fontSize(12)
+           .text(trimmed, {
+             width: 450,
+             align: 'justify',
+             lineGap: 6
+           });
+        doc.moveDown(1);
       }
-    }
 
-    // Нумерация страниц
-    const range = doc.bufferedPageRange();
-    for (let i = 0; i < range.count; i++) {
+      if (doc.y > 700) {
+        doc.addPage();
+      }
+    });
+
+    const pageRange = doc.bufferedPageRange(); // { start: 0, count: X }
+
+    for (let i = pageRange.start; i < pageRange.start + pageRange.count; i++) {
       doc.switchToPage(i);
       doc.fontSize(10)
          .fillColor('#666666')
-         .text(`Страница ${i + 1} из ${range.count}`, 50, 780, {
+         .text(`Страница ${i + 1} из ${pageRange.count}`, 50, 780, {
            align: 'center',
            width: 500
          });
