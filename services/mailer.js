@@ -5,7 +5,7 @@ module.exports = async function sendMail(buffer, email) {
 
   try {
     const transporter = nodemailer.createTransport({
-      host:  process.env.SMTP_HOST,
+      host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT,
       secure: true,
       auth: {
@@ -14,11 +14,13 @@ module.exports = async function sendMail(buffer, email) {
       },
       tls: {
         rejectUnauthorized: false
-      }
+      },
+      logger: true,
+      debug: true
     });
 
     const info = await transporter.sendMail({
-      from: process.env.SMTP_USER,
+      from: `"Biznesplan Online" <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Ваш бизнес-план готов',
       text: 'Во вложении PDF с вашим бизнес-планом.',
@@ -27,7 +29,11 @@ module.exports = async function sendMail(buffer, email) {
           filename: 'business-plan.pdf',
           content: buffer
         }
-      ]
+      ],
+      headers: {
+        'Date': new Date().toUTCString(),
+        'Message-ID': `<${Date.now()}@biznesplan.online>`
+      }
     });
 
     console.log('📧 Письмо отправлено:', info.messageId);
