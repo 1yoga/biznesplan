@@ -60,17 +60,34 @@ module.exports = function generatePDF(text) {
       const trimmed = line.trim();
       if (!trimmed) return;
 
-      if (trimmed.startsWith('###')) {
+      if (trimmed.startsWith('# ')) {
+        // Заголовок 1 уровня
         doc.moveDown(1);
-        doc.font(boldFont).fontSize(18).text(trimmed.replace(/^###\s*/, ''), { align: 'left' });
+        doc.font(boldFont).fontSize(24).text(trimmed.slice(2), { align: 'center' });
+        doc.moveDown(1);
+        doc.font(regularFont).fontSize(12);
+      } else if (trimmed.startsWith('## ')) {
+        // Заголовок 2 уровня
+        doc.moveDown(1);
+        doc.font(boldFont).fontSize(18).text(trimmed.slice(3), { align: 'left' });
         doc.moveDown(0.5);
         doc.font(regularFont).fontSize(12);
-      } else if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
-        doc.moveDown(1);
-        doc.font(boldFont).fontSize(14).text(trimmed.replace(/\*\*/g, ''), { align: 'left' });
+      } else if (trimmed.startsWith('- ')) {
+        // Пункт списка
+        const x = doc.x;
+        const y = doc.y;
+        doc.circle(x - 5, y + 6, 2).fill('#000000');
+        doc.fillColor('#000000')
+           .font(regularFont)
+           .fontSize(12)
+           .text(trimmed.slice(2), x + 10, y, {
+             width: 440,
+             align: 'left',
+             lineGap: 4
+           });
         doc.moveDown(0.5);
-        doc.font(regularFont).fontSize(12);
       } else {
+        // Обычный абзац
         doc.font(regularFont)
            .fontSize(12)
            .fillColor('#000000')
@@ -86,6 +103,7 @@ module.exports = function generatePDF(text) {
         doc.addPage();
       }
     });
+
 
     const pageRange = doc.bufferedPageRange();
     for (let i = pageRange.start; i < pageRange.start + pageRange.count; i++) {
