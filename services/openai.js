@@ -7,10 +7,10 @@ const openai = new OpenAI({
 module.exports = async function generatePlan(prompt) {
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o',
-    temperature: 0.5,
+    temperature: 0.7,
     max_tokens: 8192,
     messages: [
-      { role: 'system', content: 'Ты профессиональный бизнес-консультант.' },
+      { role: 'system', content: 'Ты профессиональный бизнес-консультант. Пиши в формате Markdown.' },
       { role: 'user', content: prompt }
     ]
   })

@@ -29,7 +29,8 @@ app.post('/generate', async (req, res) => {
 
     const plan = await generatePlan(prompt);
 
-    const pdfBuffer = await generatePDF(plan);
+    const cleanText = preprocessText(plan);
+    const pdfBuffer = await generatePDF(cleanText);
 
     await sendMail(pdfBuffer, data.email);
 
@@ -40,6 +41,19 @@ app.post('/generate', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+function preprocessText(text) {
+  return text.split('\n').map(line => {
+    const trimmed = line.trim();
+    if (/^\d+\.\s+/.test(trimmed) && !trimmed.startsWith('###')) {
+      return `### ${trimmed}`;
+    }
+    if (/^[A-ZА-Я].+:$/.test(trimmed) && !/^\*\*.*\*\*$/.test(trimmed)) {
+      return `**${trimmed}**`;
+    }
+    return line;
+  }).join('\n');
+}
 
 const PORT = process.env.PORT || 3003;
 app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));

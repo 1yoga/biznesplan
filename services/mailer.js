@@ -20,10 +20,21 @@ module.exports = async function sendMail(buffer, email) {
     });
 
     const info = await transporter.sendMail({
-      from: `"Biznesplan Online" <${process.env.SMTP_USER}>`,
+      from: `"Бизнес-план Онлайн" <${process.env.SMTP_USER}>`,
+      replyTo: 'support@biznesplan.online',
       to: email,
-      subject: 'Ваш бизнес-план готов',
-      text: 'Во вложении PDF с вашим бизнес-планом.',
+      subject: 'Ваш бизнес-план от Бизнес-план Онлайн',
+      text: `
+    Здравствуйте!
+    
+    Ваш бизнес-план успешно сформирован.
+    Пожалуйста, проверьте вложение в этом письме — там находится PDF-файл с полным текстом бизнес-плана.
+    
+    Если возникнут вопросы, вы можете написать нам: support@biznesplan.online
+    
+    С уважением,
+    команда Бизнес-план Онлайн.
+      `,
       attachments: [
         {
           filename: 'business-plan.pdf',
