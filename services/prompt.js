@@ -1,7 +1,5 @@
 module.exports = function generatePrompt(data) {
   try {
-    console.log('📥 Входные данные для генерации промпта:', JSON.stringify(data, null, 2));
-
     if (!data) throw new Error('Нет данных формы для генерации промпта');
 
     const parts = [];
@@ -26,7 +24,6 @@ module.exports = function generatePrompt(data) {
     if (data.additionalNotes) parts.push(`- Дополнительные пожелания: ${data.additionalNotes}`);
 
     const supportType = (data.supportType || '').toLowerCase();
-    console.log('📌 Тип поддержки определён как:', supportType);
 
         const commonInstructions = `
 📌 Основные требования:

@@ -25,9 +25,11 @@ app.post('/generate', async (req, res) => {
   try {
     const prompt = generatePrompt(data);
 
-    console.log('✍️ Сформированный промпт для GPT:\n', prompt); // 👈 тоже логируем
+    console.log('✍️ Сформированный промпт для GPT:\n', prompt);
 
     const plan = await generatePlan(prompt);
+
+    console.log('✍️ Сформированный план:\n', plan);
 
     const cleanText = preprocessText(plan);
     const pdfBuffer = await generatePDF(cleanText);
