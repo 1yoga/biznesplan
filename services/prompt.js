@@ -4,41 +4,41 @@ module.exports = function generatePrompt(data) {
 
     const parts = [];
 
-    if (data.supportType) parts.push(`- Тип поддержки: ${data.supportType}`);
-    if (data.grantTarget) parts.push(`- Целевой банк/грант: ${data.grantTarget}`);
-    if (data.businessField) parts.push(`- Сфера бизнеса: ${data.businessField}`);
-    if (data.businessDescription) parts.push(`- Описание бизнеса: ${data.businessDescription}`);
-    if (data.targetAudience) parts.push(`- Целевая аудитория: ${data.targetAudience}`);
-    if (data.region) parts.push(`- Регион: ${data.region}`);
-    if (data.budget) parts.push(`- Планируемый бюджет: ${data.budget}`);
-    if (data.spendingPurpose) parts.push(`- На что пойдут средства: ${data.spendingPurpose}`);
-    if (data.developmentPlan) parts.push(`- План развития: ${data.developmentPlan}`);
-    if (data.paybackPeriod) parts.push(`- Срок окупаемости: ${data.paybackPeriod}`);
-    if (data.expectedResults) parts.push(`- Ожидаемые результаты: ${data.expectedResults}`);
-    if (data.clientsCount) parts.push(`- Количество клиентов: ${data.clientsCount}`);
-    if (data.hasPremises) parts.push(`- Наличие помещения: ${data.hasPremises}`);
-    if (data.businessExperience) parts.push(`- Опыт в бизнесе: ${data.businessExperience}`);
-    if (data.experienceDescription) parts.push(`- Описание опыта: ${data.experienceDescription}`);
-    if (data.ownInvestments) parts.push(`- Собственные вложения: ${data.ownInvestments}`);
-    if (data.socialSignificance) parts.push(`- Социальная значимость: ${data.socialSignificance}`);
-    if (data.additionalNotes) parts.push(`- Дополнительные пожелания: ${data.additionalNotes}`);
+    if (data.supportType) parts.push(`- Цель бизнес-плана: ${data.supportType}`);
+    if (data.businessName) parts.push(`- Название бизнеса: ${data.businessName}`);
+    if (data.businessForm) parts.push(`- Форма бизнеса: ${data.businessForm}`);
+    if (data.businessDescription) parts.push(`- Описание деятельности: ${data.businessDescription}`);
+    if (data.startupBudget) parts.push(`- Требуемая сумма для старта: ${data.startupBudget} руб.`);
+    if (data.ownSavings) parts.push(`- Собственные сбережения: ${data.ownSavings} руб.`);
+    if (data.expectedIncome) parts.push(`- Ожидаемый доход: ${data.expectedIncome} руб./мес.`);
+    if (data.productPrices) parts.push(`- Цены на товары/услуги: ${data.productPrices} руб.`);
+    if (data.targetClients) parts.push(`- Целевая аудитория: ${data.targetClients}`);
+    if (data.competitors) parts.push(`- Конкуренты: ${data.competitors}`);
+    if (data.competitiveAdvantages) parts.push(`- Преимущества бизнеса: ${data.competitiveAdvantages}`);
+    if (data.workplace) parts.push(`- Локация и стоимость аренды: ${data.workplace} (стоимость в руб., если указана)`);
+    if (data.premisesRepair) parts.push(`- Нужен ли ремонт помещения: ${data.premisesRepair} (стоимость в руб., если указана)`);
+    if (data.startupEquipment) parts.push(`- Оборудование и материалы для старта: ${data.startupEquipment} руб.`);
+    if (data.rawMaterialsSources) parts.push(`- Источники сырья: ${data.rawMaterialsSources}`);
+    if (data.improvementOfLife) parts.push(`- Как бизнес улучшит положение заявителя: ${data.improvementOfLife}`);
+    if (data.socialImpact) parts.push(`- Социальная польза от бизнеса: ${data.socialImpact}`);
+    if (data.hasExperience) parts.push(`- Наличие опыта в сфере: ${data.hasExperience}`);
+    if (data.paybackPeriod) parts.push(`- Срок окупаемости: ${data.paybackPeriod} месяцев`);
+    if (data.risks) parts.push(`- Оценка рисков: ${data.risks}`);
+    if (data.hiringPlans) parts.push(`- Планы по найму работников: ${data.hiringPlans}`);
 
-    const supportType = (data.supportType || '').toLowerCase();
+    const supportType = (data['wpforms[fields][10]'] || '').toLowerCase();
 
-        const commonInstructions = `
+    const commonInstructions = `
 📌 Основные требования:
-- Оформляй весь текст в формате **Markdown**.
-- Заголовки первого уровня для основных разделов — через \`#\` (пример: \`# 1. Название проекта и краткое описание\`).
-- Заголовки второго уровня для подразделов — через \`##\` (пример: \`## Основные задачи проекта\`).
+- Пиши в формате **Markdown**.
+- Заголовки первого уровня через \`#\`, второго — через \`##\`.
 - Для списков используй \`-\` (дефис и пробел).
-- Обычный текст оформляй простыми абзацами без разметки.
-- Каждый раздел начинай с четкого заголовка.
-- Без упоминания количества слов или страниц в тексте.
-- Делай нормальные абзацы для печати.
+- Без лишних рассуждений и воды.
+- Финансовые разделы с расчётом налогообложения (УСН, Патент, ОСН).
+- Стиль: строгий, деловой, без лишнего украшательства.
 - Все суммы указывай в рублях.
-- В финансовом плане обязательно учитывай налогообложение (УСН, Патент, ОСН).
-- Стиль: официальный, строгий, без воды и лишних рассуждений.
-    `;
+- Готовый текст должен быть удобен для распечатки и подачи в госорганы или банк.
+`;
 
     let structure = '';
 
