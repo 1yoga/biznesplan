@@ -32,6 +32,9 @@ app.post('/generate', async (req, res) => {
     console.log('✍️ Сформированный план:\n', plan);
 
     const cleanText = preprocessText(plan);
+
+    console.log('✍️ Сформированный cleanText:\n', cleanText);
+
     const pdfBuffer = await generatePDF(cleanText);
 
     await sendMail(pdfBuffer, data.email);
