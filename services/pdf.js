@@ -54,49 +54,23 @@ module.exports = function generatePDF(text) {
 
     doc.addPage(); // Новый лист после титула
 
-    // Разбивка по строкам
     const lines = text.split('\n');
 
-    lines.forEach((line) => {
+    lines.forEach(line => {
       const trimmed = line.trim();
       if (!trimmed) return;
 
-      if (/^###\s+/.test(trimmed)) {
-        // Заголовок уровня 1
+      if (trimmed.startsWith('###')) {
         doc.moveDown(1);
-        doc.font(boldFont)
-           .fontSize(18)
-           .text(trimmed.replace(/^###\s*/, ''), {
-             align: 'left'
-           });
+        doc.font(boldFont).fontSize(18).text(trimmed.replace(/^###\s*/, ''), { align: 'left' });
         doc.moveDown(0.5);
         doc.font(regularFont).fontSize(12);
-      } else if (/^\*\*(.+)\*\*$/.test(trimmed)) {
-        // Подзаголовок уровня 2
+      } else if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
         doc.moveDown(1);
-        doc.font(boldFont)
-           .fontSize(14)
-           .text(trimmed.replace(/\*\*/g, ''), {
-             align: 'left'
-           });
+        doc.font(boldFont).fontSize(14).text(trimmed.replace(/\*\*/g, ''), { align: 'left' });
         doc.moveDown(0.5);
         doc.font(regularFont).fontSize(12);
-      } else if (/^[-•]\s+/.test(trimmed)) {
-        // Пункт списка
-        const x = doc.x;
-        const y = doc.y;
-        doc.circle(x - 5, y + 6, 2).fill('#000000');
-        doc.fillColor('#000000')
-           .font(regularFont)
-           .fontSize(12)
-           .text(trimmed.replace(/^[-•]\s*/, ''), x + 10, y, {
-             width: 440,
-             align: 'left',
-             lineGap: 4
-           });
-        doc.moveDown(0.5);
       } else {
-        // Обычный текст
         doc.font(regularFont)
            .fontSize(12)
            .fillColor('#000000')
@@ -113,9 +87,7 @@ module.exports = function generatePDF(text) {
       }
     });
 
-    // Нумерация страниц
     const pageRange = doc.bufferedPageRange();
-
     for (let i = pageRange.start; i < pageRange.start + pageRange.count; i++) {
       doc.switchToPage(i);
       doc.fontSize(10)

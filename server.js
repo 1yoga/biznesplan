@@ -43,16 +43,23 @@ app.post('/generate', async (req, res) => {
 });
 
 function preprocessText(text) {
-  return text.split('\n').map(line => {
-    const trimmed = line.trim();
-    if (/^\d+\.\s+/.test(trimmed) && !trimmed.startsWith('###')) {
-      return `### ${trimmed}`;
-    }
-    if (/^[A-ZА-Я].+:$/.test(trimmed) && !/^\*\*.*\*\*$/.test(trimmed)) {
-      return `**${trimmed}**`;
-    }
-    return line;
-  }).join('\n');
+  return text
+    .split('\n')
+    .map(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return '';
+      // Заголовки разделов
+      if (/^\d+\.\s+/.test(trimmed)) {
+        return `### ${trimmed}`;
+      }
+      // Подзаголовки вида "Финансовый план:" превращаем в жирный текст
+      if (/^[А-ЯA-Z][^:]+:$/.test(trimmed)) {
+        return `**${trimmed.replace(':', '')}**`;
+      }
+      return trimmed;
+    })
+    .join('\n')
+    .replace(/\(\d{2,4}–\d{2,4} слов\)/g, ''); // Убираем все пометки про слова
 }
 
 const PORT = process.env.PORT || 3003;
