@@ -31,7 +31,7 @@ app.post('/generate', async (req, res) => {
 
     const pdfBuffer = await generatePDF(plan);
 
-    await sendMail(pdfBuffer, data['wpforms[fields][20]']); // почта пользователя
+    await sendMail(pdfBuffer, data.email);
 
     res.json({ success: true, message: 'Письмо отправлено' });
 
