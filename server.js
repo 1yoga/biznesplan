@@ -4,9 +4,9 @@ const cors = require('cors');
 const app = express();
 
 const generatePlan = require('./services/openai');
-const generatePDF = require('./services/pdf');
+const generateWord = require('./services/word');
 const sendMail = require('./services/mailer');
-const generatePrompt = require('./services/prompt'); // ⬅
+const generatePrompt = require('./services/prompt');
 
 const corsOptions = {
   origin: 'https://biznesplan.online',
@@ -35,9 +35,9 @@ app.post('/generate', async (req, res) => {
 
     console.log('✍️ Сформированный cleanText:\n', cleanText);
 
-    const pdfBuffer = await generatePDF(cleanText);
+    const wordBuffer = await generateWord(cleanText);
 
-    await sendMail(pdfBuffer, data.email);
+    await sendMail(wordBuffer, data.email);
 
     res.json({ success: true, message: 'Письмо отправлено' });
 
