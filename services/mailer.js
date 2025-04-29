@@ -37,7 +37,7 @@ module.exports = async function sendMail(buffer, email) {
       `,
       attachments: [
         {
-          filename: 'business-plan.pdf',
+          filename: 'business-plan.docx',
           content: buffer
         }
       ],
