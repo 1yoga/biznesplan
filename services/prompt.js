@@ -8,25 +8,28 @@ module.exports = function generatePrompt(data) {
     if (data.businessName) parts.push(`- Название бизнеса: ${data.businessName}`);
     if (data.businessForm) parts.push(`- Форма бизнеса: ${data.businessForm}`);
     if (data.businessDescription) parts.push(`- Описание деятельности: ${data.businessDescription}`);
-    if (data.startupBudget) parts.push(`- Требуемая сумма для старта: ${data.startupBudget} руб.`);
-    if (data.ownSavings) parts.push(`- Собственные сбережения: ${data.ownSavings} руб.`);
-    if (data.expectedIncome) parts.push(`- Ожидаемый доход: ${data.expectedIncome} руб./мес.`);
-    if (data.productPrices) parts.push(`- Цены на товары/услуги: ${data.productPrices} руб.`);
+    if (data.location) parts.push(`- Местоположение бизнеса: ${data.location}`);
+    if (data.startupAmount) parts.push(`- Общая сумма для старта (включая собственные): ${data.startupAmount} руб.`);
+    if (data.spendingPurpose) parts.push(`- На что пойдут средства: ${data.spendingPurpose}`);
+    if (data.ownMoney) parts.push(`- Собственные вложения: ${data.ownMoney} руб.`);
+    if (data.ownAssets) parts.push(`- Неденежные вложения: ${data.ownAssets}`);
+    if (data.clientsPerMonth) parts.push(`- Ожидаемое количество клиентов в месяц: ${data.clientsPerMonth}`);
+    if (data.productPrices) parts.push(`- Цены на товары/услуги: ${data.productPrices}`);
     if (data.targetClients) parts.push(`- Целевая аудитория: ${data.targetClients}`);
     if (data.competitors) parts.push(`- Конкуренты: ${data.competitors}`);
-    if (data.competitiveAdvantages) parts.push(`- Преимущества бизнеса: ${data.competitiveAdvantages}`);
-    if (data.workplace) parts.push(`- Локация и стоимость аренды: ${data.workplace} (стоимость в руб., если указана)`);
-    if (data.premisesRepair) parts.push(`- Нужен ли ремонт помещения: ${data.premisesRepair} (стоимость в руб., если указана)`);
-    if (data.startupEquipment) parts.push(`- Оборудование и материалы для старта: ${data.startupEquipment} руб.`);
-    if (data.rawMaterialsSources) parts.push(`- Источники сырья: ${data.rawMaterialsSources}`);
-    if (data.improvementOfLife) parts.push(`- Как бизнес улучшит положение заявителя: ${data.improvementOfLife}`);
+    if (data.advantages) parts.push(`- Преимущества бизнеса: ${data.advantages}`);
+    if (data.needsRepair) parts.push(`- Нужен ли ремонт помещения: ${data.needsRepair}`);
+    if (data.repairCost) parts.push(`- Стоимость ремонта: ${data.repairCost} руб.`);
+    if (data.rawMaterials) parts.push(`- Источники сырья: ${data.rawMaterials}`);
+    if (data.lifeImprovement) parts.push(`- Как бизнес улучшит ваше положение: ${data.lifeImprovement}`);
     if (data.socialImpact) parts.push(`- Социальная польза от бизнеса: ${data.socialImpact}`);
     if (data.hasExperience) parts.push(`- Наличие опыта в сфере: ${data.hasExperience}`);
+    if (data.experienceDetails) parts.push(`- Подробности опыта: ${data.experienceDetails}`);
     if (data.paybackPeriod) parts.push(`- Срок окупаемости: ${data.paybackPeriod} месяцев`);
-    if (data.risks) parts.push(`- Оценка рисков: ${data.risks}`);
+    if (data.risks) parts.push(`- Возможные риски: ${data.risks}`);
     if (data.hiringPlans) parts.push(`- Планы по найму работников: ${data.hiringPlans}`);
 
-    const supportType = (data['wpforms[fields][10]'] || '').toLowerCase();
+    const supportType = (data.supportType || '').toLowerCase();
 
     const commonInstructions = `
 📌 Основные требования:
