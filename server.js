@@ -21,6 +21,7 @@ app.use(express.json());
 app.post('/generate', async (req, res) => {
   const { data } = req.body;
   if (!data) return res.status(400).json({ error: 'Нет данных формы' });
+  console.log(data)
 
   try {
     const prompt = generatePrompt(data);

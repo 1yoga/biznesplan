@@ -15,8 +15,6 @@ module.exports = async function sendMail(buffer, email) {
       tls: {
         rejectUnauthorized: false
       },
-      logger: true,
-      debug: true
     });
 
     const info = await transporter.sendMail({
