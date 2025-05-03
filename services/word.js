@@ -34,7 +34,6 @@ module.exports = async function generateWord(text) {
             headingStyleRange: "1-3",
           }),
 
-
           ...paragraphs,
         ],
       },
@@ -56,13 +55,6 @@ function generateTitlePage() {
         new TextRun({ text: 'БИЗНЕС-ПЛАН', bold: true, size: 48 }),
       ],
     }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 200 },
-      children: [
-        new TextRun({ text: 'по направлению деятельности', italics: true, size: 28 }),
-      ],
-    }),
     new Paragraph({ text: '', spacing: { line: 1000 } }),
     new Paragraph({
       alignment: AlignmentType.LEFT,
@@ -81,7 +73,7 @@ function generateTitlePage() {
     new Paragraph({
       alignment: AlignmentType.RIGHT,
       spacing: { before: 500 },
-      children: [new TextRun({ text: 'г. [Город], 2025 г.', size: 28 })],
+      children: [new TextRun({ text: '[Город], 2025 г.', size: 28 })],
     }),
   ];
 }
@@ -134,10 +126,11 @@ function processTextToParagraphs(text) {
           spacing: { line: 276 },
         })
       );
-    } else if (/^[\u2022\u25CF\u2013]\s+/.test(trimmed)) {
+    } else if (/^[•\u25CF\u2022\u2013-]\s+/.test(trimmed)) {
+      const textOnly = trimmed.replace(/^[•\u25CF\u2022\u2013-]\s+/, "").replace(/\*\*/g, "");
       paragraphs.push(
         new Paragraph({
-          children: [new TextRun({ text: trimmed.replace(/^[\u2022\u25CF\u2013]\s+/, ""), size: 28 })],
+          children: [new TextRun({ text: textOnly, size: 28 })],
           bullet: { level: 0 },
           spacing: { line: 276 },
         })
