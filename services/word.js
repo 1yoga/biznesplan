@@ -1,21 +1,70 @@
-const { Document, Packer, Paragraph, TextRun } = require('docx');
+const { Document, Packer, Paragraph, TextRun, TableOfContents, HeadingLevel, PageBreak } = require('docx');
 
 module.exports = async function generateWord(text) {
+  const paragraphs = processTextToParagraphs(text);
+
   const doc = new Document({
     sections: [
       {
         properties: {
           page: {
-            margin: { top: 720, bottom: 720, left: 1134, right: 720 }, // 2.5 см слева = 1134 twips
+            margin: { top: 720, bottom: 720, left: 1134, right: 720 },
           },
         },
-        children: processTextToParagraphs(text),
+        children: [
+          ...generateTitlePage(),
+          new PageBreak(),
+          new Paragraph({ text: 'Содержание', heading: HeadingLevel.HEADING_1 }),
+          new TableOfContents("Оглавление", {
+            hyperlink: true,
+            headingStyleRange: "1-3",
+          }),
+          new PageBreak(),
+          ...paragraphs,
+        ],
       },
     ],
   });
 
   return Packer.toBuffer(doc);
 };
+
+function generateTitlePage() {
+  return [
+    new Paragraph({
+      children: [
+        new TextRun({ text: 'Инициатор проекта (ФИО): ________________________', size: 28 })
+      ],
+      spacing: { line: 276 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: 'Адрес места регистрации: _______________________', size: 28 })
+      ],
+      spacing: { line: 276 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: 'Контактный телефон: ____________________________', size: 28 })
+      ],
+      spacing: { line: 276 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: 'Адрес электронной почты: ______________________', size: 28 })
+      ],
+      spacing: { line: 276 },
+    }),
+    new Paragraph({ text: '' }),
+    new Paragraph({ text: '' }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: '[город/поселение]  [год]', size: 28 })
+      ],
+      spacing: { line: 276 },
+    })
+  ];
+}
 
 function processTextToParagraphs(text) {
   const paragraphs = [];
@@ -28,46 +77,37 @@ function processTextToParagraphs(text) {
       continue;
     }
 
-    // Заголовки
     if (/^#\s+/.test(trimmed)) {
       paragraphs.push(new Paragraph({
-        children: [new TextRun({ text: trimmed.replace(/^#\s+/, ''), bold: true, size: 48 })],
+        text: trimmed.replace(/^#\s+/, ''),
+        heading: HeadingLevel.HEADING_1,
         spacing: { line: 276 },
       }));
     } else if (/^##\s+/.test(trimmed)) {
       paragraphs.push(new Paragraph({
-        children: [new TextRun({ text: trimmed.replace(/^##\s+/, ''), bold: true, size: 36 })],
+        text: trimmed.replace(/^##\s+/, ''),
+        heading: HeadingLevel.HEADING_2,
         spacing: { line: 276 },
       }));
     } else if (/^###\s+/.test(trimmed)) {
       paragraphs.push(new Paragraph({
-        children: [new TextRun({ text: trimmed.replace(/^###\s+/, ''), bold: true, size: 32 })],
+        text: trimmed.replace(/^###\s+/, ''),
+        heading: HeadingLevel.HEADING_3,
         spacing: { line: 276 },
-        indent: { firstLine: 709 },
       }));
-    }
-
-    // Жирный текст (подзаголовок)
-    else if (/^\*\*[^*]+\*\*$/.test(trimmed)) {
+    } else if (/^\*\*[^*]+\*\*$/.test(trimmed)) {
       paragraphs.push(new Paragraph({
         children: [new TextRun({ text: trimmed.replace(/\*\*/g, ''), bold: true, size: 28 })],
         spacing: { line: 276 },
         indent: { firstLine: 709 },
       }));
-    }
-
-    // Список
-    else if (trimmed.startsWith('- ')) {
+    } else if (trimmed.startsWith('- ')) {
       paragraphs.push(new Paragraph({
         children: [new TextRun({ text: trimmed.slice(2), size: 28 })],
         bullet: { level: 0 },
         spacing: { line: 276 },
       }));
-    }
-
-    // Простой абзац
-    else {
-      // Найдём жирные участки внутри текста — например, "Это **важно**!"
+    } else {
       const parts = [];
       let match;
       let regex = /\*\*(.+?)\*\*/g;
@@ -95,5 +135,3 @@ function processTextToParagraphs(text) {
 
   return paragraphs;
 }
-
-
