@@ -5,13 +5,14 @@ const {
   TextRun,
   TableOfContents,
   HeadingLevel,
-} = require('docx');
+  AlignmentType,
+} = require("docx");
 
 module.exports = async function generateWord(text) {
   const paragraphs = processTextToParagraphs(text);
 
   const doc = new Document({
-    features: { updateFields: true }, // 💡 Оглавление будет обновлено при открытии
+    features: { updateFields: true },
     sections: [
       {
         properties: {
@@ -22,20 +23,17 @@ module.exports = async function generateWord(text) {
         children: [
           ...generateTitlePage(),
 
-          // 🟦 Новая страница перед содержанием
           new Paragraph({ pageBreakBefore: true }),
 
           new Paragraph({
-            text: 'Содержание',
+            text: "Содержание",
             heading: HeadingLevel.HEADING_1,
-            pageBreakBefore: true,
           }),
-          new TableOfContents('Оглавление', {
+          new TableOfContents("Оглавление", {
             hyperlink: true,
-            headingStyleRange: '1-3',
+            headingStyleRange: "1-3",
           }),
 
-          // 🟦 Новая страница перед основным текстом
           new Paragraph({ pageBreakBefore: true }),
 
           ...paragraphs,
@@ -50,82 +48,128 @@ module.exports = async function generateWord(text) {
 function generateTitlePage() {
   return [
     new Paragraph({
+      alignment: AlignmentType.CENTER,
       children: [
-        new TextRun({ text: 'Инициатор проекта (ФИО): ________________________', size: 28 }),
+        new TextRun({ text: "БИЗНЕС-ПЛАН", size: 48, bold: true }),
       ],
-      spacing: { line: 276 },
+      spacing: { after: 500 },
     }),
     new Paragraph({
+      alignment: AlignmentType.CENTER,
       children: [
-        new TextRun({ text: 'Адрес места регистрации: _______________________', size: 28 }),
+        new TextRun({
+          text: "Инициатор проекта (ФИО): ________________________",
+          size: 28,
+        }),
       ],
-      spacing: { line: 276 },
+      spacing: { after: 200 },
     }),
     new Paragraph({
+      alignment: AlignmentType.CENTER,
       children: [
-        new TextRun({ text: 'Контактный телефон: ____________________________', size: 28 }),
+        new TextRun({
+          text: "Адрес места регистрации: _______________________",
+          size: 28,
+        }),
       ],
-      spacing: { line: 276 },
+      spacing: { after: 200 },
     }),
     new Paragraph({
+      alignment: AlignmentType.CENTER,
       children: [
-        new TextRun({ text: 'Адрес электронной почты: ______________________', size: 28 }),
+        new TextRun({
+          text: "Контактный телефон: ____________________________",
+          size: 28,
+        }),
       ],
-      spacing: { line: 276 },
+      spacing: { after: 200 },
     }),
-    new Paragraph({ text: '' }),
-    new Paragraph({ text: '' }),
     new Paragraph({
+      alignment: AlignmentType.CENTER,
       children: [
-        new TextRun({ text: '[город/поселение]  [год]', size: 28 }),
+        new TextRun({
+          text: "Адрес электронной почты: ______________________",
+          size: 28,
+        }),
       ],
-      spacing: { line: 276 },
+      spacing: { after: 400 },
+    }),
+    new Paragraph({ text: "" }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [
+        new TextRun({ text: "г. [Город]  2025 г.", size: 28 }),
+      ],
     }),
   ];
 }
 
 function processTextToParagraphs(text) {
   const paragraphs = [];
-  const lines = text.split('\n');
+  const lines = text.split("\n");
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) {
-      paragraphs.push(new Paragraph({ text: '', spacing: { line: 276 } }));
+      paragraphs.push(new Paragraph({ text: "", spacing: { line: 276 } }));
       continue;
     }
 
     if (/^#\s+/.test(trimmed)) {
-      paragraphs.push(new Paragraph({
-        text: trimmed.replace(/^#\s+/, ''),
-        heading: HeadingLevel.HEADING_1,
-        spacing: { line: 276 },
-        pageBreakBefore: true, // каждый новый раздел — с новой страницы
-      }));
+      paragraphs.push(
+        new Paragraph({
+          text: trimmed.replace(/^#\s+/, ""),
+          heading: HeadingLevel.HEADING_1,
+          spacing: { line: 276 },
+          pageBreakBefore: true,
+        })
+      );
     } else if (/^##\s+/.test(trimmed)) {
-      paragraphs.push(new Paragraph({
-        text: trimmed.replace(/^##\s+/, ''),
-        heading: HeadingLevel.HEADING_2,
-        spacing: { line: 276 },
-      }));
+      paragraphs.push(
+        new Paragraph({
+          text: trimmed.replace(/^##\s+/, ""),
+          heading: HeadingLevel.HEADING_2,
+          spacing: { line: 276 },
+        })
+      );
     } else if (/^###\s+/.test(trimmed)) {
-      paragraphs.push(new Paragraph({
-        text: trimmed.replace(/^###\s+/, ''),
-        heading: HeadingLevel.HEADING_3,
-        spacing: { line: 276 },
-      }));
+      paragraphs.push(
+        new Paragraph({
+          text: trimmed.replace(/^###\s+/, ""),
+          heading: HeadingLevel.HEADING_3,
+          spacing: { line: 276 },
+        })
+      );
+    } else if (/^\*\*([^*]+)\*\*:(.+)/.test(trimmed)) {
+      const [, boldPart, rest] = trimmed.match(/^\*\*([^*]+)\*\*:(.+)/);
+      paragraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: `${boldPart}:`, bold: true, size: 28 }),
+            new TextRun({ text: ` ${rest.trim()}`, size: 28 }),
+          ],
+          bullet: { level: 0 },
+          spacing: { line: 276 },
+        })
+      );
     } else if (/^\*\*[^*]+\*\*$/.test(trimmed)) {
-      paragraphs.push(new Paragraph({
-        children: [new TextRun({ text: trimmed.replace(/\*\*/g, ''), bold: true, size: 28 })],
-        spacing: { line: 276 },
-        indent: { firstLine: 709 },
-      }));
-    } else if (trimmed.startsWith('- ')) {
-      paragraphs.push(new Paragraph({
-        children: [new TextRun({ text: trimmed.slice(2), size: 28 })],
-        bullet: { level: 0 },
-        spacing: { line: 276 },
-      }));
+      paragraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: trimmed.replace(/\*\*/g, ""), bold: true, size: 28 }),
+          ],
+          spacing: { line: 276 },
+          indent: { firstLine: 709 },
+        })
+      );
+    } else if (trimmed.startsWith("- ")) {
+      paragraphs.push(
+        new Paragraph({
+          children: [new TextRun({ text: trimmed.slice(2), size: 28 })],
+          bullet: { level: 0 },
+          spacing: { line: 276 },
+        })
+      );
     } else {
       const parts = [];
       let match;
@@ -144,11 +188,13 @@ function processTextToParagraphs(text) {
         parts.push(new TextRun({ text: trimmed.slice(lastIndex), size: 28 }));
       }
 
-      paragraphs.push(new Paragraph({
-        children: parts.length > 0 ? parts : [new TextRun({ text: trimmed, size: 28 })],
-        spacing: { line: 276 },
-        indent: { firstLine: 709 },
-      }));
+      paragraphs.push(
+        new Paragraph({
+          children: parts.length > 0 ? parts : [new TextRun({ text: trimmed, size: 28 })],
+          spacing: { line: 276 },
+          indent: { firstLine: 709 },
+        })
+      );
     }
   }
 
