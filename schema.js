@@ -1,17 +1,15 @@
-const { pgTable, uuid, text, jsonb, timestamp } = require('drizzle-orm/pg-core');
+const { pgTable, text, jsonb, uuid, timestamp } = require('drizzle-orm/pg-core');
 
 const plans = pgTable('plans', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: uuid('id').defaultRandom().primaryKey(),
   email: text('email').notNull(),
-  formData: jsonb('form_data').notNull(),
-  status: text('status')
-    .notNull()
-    .default('pending'),
-  fileUrl: text('file_url'),
-  gptPrompt: text('gpt_prompt'),
-  gptResponse: text('gpt_response'),
-  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow(),
-  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow(),
+  form_data: jsonb('form_data').notNull(),
+  status: text('status').notNull().default('pending'),
+  file_url: text('file_url'),
+  gpt_prompt: text('gpt_prompt'),
+  gpt_response: text('gpt_response'),
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
 });
 
 module.exports = { plans };
