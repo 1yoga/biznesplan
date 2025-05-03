@@ -1,71 +1,73 @@
+// ✅ Новый backend код с асинхронной генерацией и Drizzle
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const app = express();
+const { db, plans } = require('./db'); // Drizzle config
+const { eq } = require('drizzle-orm');
+const { v4: uuidv4 } = require('uuid');
 
 const generatePlan = require('./services/openai');
 const generateWord = require('./services/word');
 const sendMail = require('./services/mailer');
 const generatePrompt = require('./services/prompt');
 
-const corsOptions = {
+const app = express();
+
+app.use(cors({
   origin: 'https://biznesplan.online',
   methods: ['POST'],
   allowedHeaders: ['Content-Type'],
   optionsSuccessStatus: 204
-};
-
-app.use(cors(corsOptions));
+}));
 app.use(express.json());
 
 app.post('/generate', async (req, res) => {
   const { data } = req.body;
   if (!data) return res.status(400).json({ error: 'Нет данных формы' });
-  console.log(data)
 
-  try {
-    const prompt = generatePrompt(data);
+  const id = uuidv4();
+  await db.insert(plans).values({
+    id,
+    email: data.email,
+    form_data: data,
+    status: 'pending'
+  });
 
-    console.log('✍️ Сформированный промпт для GPT:\n', prompt);
+  res.json({ success: true, id });
 
-    const plan = await generatePlan(prompt);
+  await (async () => {
+      try {
+          const prompt = generatePrompt(data);
+          const response = await generatePlan(prompt);
+          const clean = preprocessText(response);
+          const docx = await generateWord(clean);
 
-    console.log('✍️ Сформированный план:\n', plan);
+          await sendMail(docx, data.email);
 
-    const cleanText = preprocessText(plan);
-
-    console.log('✍️ Сформированный cleanText:\n', cleanText);
-
-    const wordBuffer = await generateWord(cleanText);
-
-    await sendMail(wordBuffer, data.email);
-
-    res.json({ success: true, message: 'Письмо отправлено' });
-
-  } catch (err) {
-    console.error('❌ Ошибка:', err);
-    res.status(500).json({ error: err.message });
-  }
+          await db.update(plans).set({
+              gpt_prompt: prompt,
+              gpt_response: response,
+              status: 'completed',
+              updated_at: new Date()
+          }).where(eq(plans.id, id));
+      } catch (err) {
+          console.error('Ошибка генерации:', err);
+          await db.update(plans).set({status: 'error'}).where(eq(plans.id, id));
+      }
+  })();
 });
 
 function preprocessText(text) {
-  return text
-    .split('\n')
+  return text.split('\n')
     .map(line => {
       const trimmed = line.trim();
       if (!trimmed) return '';
-      // Заголовки разделов
-      if (/^\d+\.\s+/.test(trimmed)) {
-        return `### ${trimmed}`;
-      }
-      // Подзаголовки вида "Финансовый план:" превращаем в жирный текст
-      if (/^[А-ЯA-Z][^:]+:$/.test(trimmed)) {
-        return `**${trimmed.replace(':', '')}**`;
-      }
+      if (/^\d+\.\s+/.test(trimmed)) return `### ${trimmed}`;
+      if (/^[А-ЯA-Z][^:]+:$/.test(trimmed)) return `**${trimmed.replace(':', '')}**`;
       return trimmed;
     })
     .join('\n')
-    .replace(/\(\d{2,4}–\d{2,4} слов\)/g, ''); // Убираем все пометки про слова
+    .replace(/\(\d{2,4}–\d{2,4} слов\)/g, '');
 }
 
 const PORT = process.env.PORT || 3003;
