@@ -8,8 +8,8 @@ const {
   AlignmentType,
 } = require("docx");
 
-module.exports = async function generateWord(text) {
-  const paragraphs = processTextToParagraphs(text);
+module.exports = async function generateWord(text, sectionLimit = null) {
+  const paragraphs = processTextToParagraphs(text, sectionLimit);
 
   const doc = new Document({
     features: { updateFields: true },
@@ -85,11 +85,15 @@ function generateTitlePage() {
 }
 
 
-function processTextToParagraphs(text) {
+function processTextToParagraphs(text, sectionLimit = null) {
   const paragraphs = [];
   const lines = text.split("\n");
+  let sectionCount = 0;
+  let stopProcessing = false;
 
   for (const line of lines) {
+    if (stopProcessing) break;
+
     const trimmed = line.trim();
     if (!trimmed) {
       paragraphs.push(new Paragraph({ text: "", spacing: { line: 276 } }));
@@ -97,6 +101,11 @@ function processTextToParagraphs(text) {
     }
 
     if (/^#\s+/.test(trimmed)) {
+      sectionCount++;
+      if (sectionLimit && sectionCount > sectionLimit) {
+        stopProcessing = true;
+        break;
+      }
       paragraphs.push(
         new Paragraph({
           text: trimmed.replace(/^#\s+/, ""),
@@ -129,7 +138,6 @@ function processTextToParagraphs(text) {
             new TextRun({ text: `${boldPart}:`, bold: true, size: 28 }),
             new TextRun({ text: ` ${rest.trim()}`, size: 28 }),
           ],
-          bullet: { level: 0 },
           spacing: { line: 276 },
         })
       );
@@ -153,31 +161,63 @@ function processTextToParagraphs(text) {
         })
       );
     } else if (trimmed.startsWith("- ")) {
-      paragraphs.push(
-        new Paragraph({
-          children: [new TextRun({ text: trimmed.slice(2), size: 28 })],
-          bullet: { level: 0 },
-          spacing: { line: 276 },
-        })
-      );
+      const lineText = trimmed.slice(2).trim();
+      const boldTitleMatch = lineText.match(/^\*\*(.+?)\*\*:$/);
+
+      if (boldTitleMatch) {
+        paragraphs.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: `${boldTitleMatch[1]}:`, bold: true, size: 28 }),
+            ],
+            spacing: { line: 276 },
+            indent: { firstLine: 709 },
+          })
+        );
+      } else {
+        const children = [];
+        const regex = /\*\*(.+?)\*\*/g;
+        let lastIndex = 0;
+        let match;
+
+        while ((match = regex.exec(lineText)) !== null) {
+          if (match.index > lastIndex) {
+            children.push(new TextRun({ text: lineText.slice(lastIndex, match.index), size: 28 }));
+          }
+          children.push(new TextRun({ text: match[1], bold: true, size: 28 }));
+          lastIndex = regex.lastIndex;
+        }
+
+        if (lastIndex < lineText.length) {
+          children.push(new TextRun({ text: lineText.slice(lastIndex), size: 28 }));
+        }
+
+        paragraphs.push(
+          new Paragraph({
+            children: children.length > 0 ? children : [new TextRun({ text: lineText, size: 28 })],
+            bullet: { level: 0 },
+            spacing: { line: 276 },
+          })
+        );
+      }
     } else if (/^\d+\.\s+\*\*(.+?)\*\*:(.+)/.test(trimmed)) {
       const [, boldPart, rest] = trimmed.match(/^\d+\.\s+\*\*(.+?)\*\*:(.+)/);
       paragraphs.push(
-          new Paragraph({
-            children: [
-              new TextRun({text: `${trimmed.match(/^\d+\./)[0]} `, size: 28}),
-              new TextRun({text: `${boldPart}:`, bold: true, size: 28}),
-              new TextRun({text: ` ${rest.trim()}`, size: 28}),
-            ],
-            spacing: {line: 276},
-            indent: {firstLine: 709},
-          })
-      )
+        new Paragraph({
+          children: [
+            new TextRun({ text: `${trimmed.match(/^\d+\./)[0]} `, size: 28 }),
+            new TextRun({ text: `${boldPart}:`, bold: true, size: 28 }),
+            new TextRun({ text: ` ${rest.trim()}`, size: 28 }),
+          ],
+          spacing: { line: 276 },
+          indent: { firstLine: 709 },
+        })
+      );
     } else {
       const parts = [];
-      let match;
       const regex = /\*\*(.+?)\*\*/g;
       let lastIndex = 0;
+      let match;
 
       while ((match = regex.exec(trimmed)) !== null) {
         if (match.index > lastIndex) {
@@ -203,3 +243,4 @@ function processTextToParagraphs(text) {
 
   return paragraphs;
 }
+

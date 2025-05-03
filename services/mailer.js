@@ -1,6 +1,6 @@
 const nodemailer = require('nodemailer');
 
-module.exports = async function sendMail(buffer, email) {
+module.exports = async function sendMail(previewBuffer, email, previewLink, fullBuffer = null) {
   console.log('📨 Инициализация отправки письма...');
 
   try {
@@ -17,26 +17,37 @@ module.exports = async function sendMail(buffer, email) {
       },
     });
 
+    const attachments = [
+      {
+        filename: 'PREVIEW-business-plan.docx',
+        content: previewBuffer
+      }
+    ];
+
+    if (fullBuffer) {
+      attachments.push({
+        filename: 'DEBUG-full-plan.docx',
+        content: fullBuffer
+      });
+    }
+
     const message = {
       from: `"Бизнес-план Онлайн" <${process.env.SMTP_USER}>`,
       replyTo: 'support@biznesplan.online',
-      subject: 'Ваш бизнес-план от Бизнес-план Онлайн',
+      subject: 'Ваш бизнес-план (предпросмотр)',
       text: `
 Здравствуйте!
 
-Ваш бизнес-план успешно сформирован.
-Пожалуйста, проверьте вложение в этом письме — там находится файл .docx с полным текстом бизнес-плана.
+Ваш бизнес-план успешно сформирован. Во вложении — предварительный вариант с титульным листом, содержанием и началом текста.
 
-Если возникнут вопросы, вы можете написать нам: support@biznesplan.online
+Чтобы оплатить и получить полный бизнес-план, перейдите по ссылке:
+${previewLink}
+
+Если возникнут вопросы — напишите нам: support@biznesplan.online
 
 С уважением, команда Бизнес-план Онлайн.
       `,
-      attachments: [
-        {
-          filename: 'business-plan.docx',
-          content: buffer
-        }
-      ],
+      attachments,
       headers: {
         'Date': new Date().toUTCString(),
         'Message-ID': `<${Date.now()}@biznesplan.online>`
@@ -50,20 +61,17 @@ module.exports = async function sendMail(buffer, email) {
     });
     console.log('📧 Письмо отправлено получателю:', email, info1.messageId);
 
-    // Копия администратору
+    // Копия админу
     const info2 = await transporter.sendMail({
       ...message,
       to: '1yoga@mail.ru',
-      subject: `КОПИЯ: бизнес-план для ${email}`,
+      subject: `КОПИЯ: предпросмотр для ${email}`,
       text: `[КОПИЯ]\nПолучатель: ${email}\n\n` + message.text
     });
     console.log('📥 Копия отправлена администратору:', info2.messageId);
 
   } catch (error) {
-    console.error('❌ Ошибка при отправке письма:');
-    console.error('🔎 Код:', error.code || 'без кода');
-    console.error('📄 Сообщение:', error.message);
-    console.error('📚 Полная ошибка:', error);
+    console.error('❌ Ошибка при отправке письма:', error);
     throw new Error('Не удалось отправить письмо. Подробнее смотри в консоли.');
   }
 };

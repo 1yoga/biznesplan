@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { db, plans } = require('./db'); // Drizzle config
+const { db, plans } = require('./db');
 const { eq } = require('drizzle-orm');
 const { v4: uuidv4 } = require('uuid');
 
@@ -35,24 +35,27 @@ app.post('/generate', async (req, res) => {
   res.json({ success: true, id });
 
   await (async () => {
-      try {
-          const prompt = generatePrompt(data);
-          const response = await generatePlan(prompt);
-          const clean = preprocessText(response);
-          const docx = await generateWord(clean);
+    try {
+      const prompt = generatePrompt(data);
+      const response = await generatePlan(prompt);
+      const clean = preprocessText(response);
 
-          await sendMail(docx, data.email);
+      const fullDocx = await generateWord(clean);
 
-          await db.update(plans).set({
-              gpt_prompt: prompt,
-              gpt_response: response,
-              status: 'completed',
-              updated_at: new Date()
-          }).where(eq(plans.id, id));
-      } catch (err) {
-          console.error('Ошибка генерации:', err);
-          await db.update(plans).set({status: 'error'}).where(eq(plans.id, id));
-      }
+      const previewDocx = await generateWord(clean, 2);
+      const previewLink = `https://biznesplan.online/preview/${id}`;
+      await sendMail(previewDocx, data.email, previewLink, fullDocx);
+
+      await db.update(plans).set({
+        gpt_prompt: prompt,
+        gpt_response: response,
+        status: 'completed',
+        updated_at: new Date()
+      }).where(eq(plans.id, id));
+    } catch (err) {
+      console.error('Ошибка генерации:', err);
+      await db.update(plans).set({ status: 'error' }).where(eq(plans.id, id));
+    }
   })();
 });
 
@@ -66,7 +69,6 @@ app.get("/status/:id", async (req, res) => {
       return res.status(404).json({ error: "План не найден" });
     }
 
-    // Возвращаем только статус и, если готов, часть ответа
     const response = {
       status: plan.status,
     };
@@ -94,41 +96,27 @@ function extractPreview(markdown) {
       continue;
     }
 
-    // Заголовки
     if (line.startsWith("# ")) {
       htmlLines.push(`<h1>${line.slice(2)}</h1>`);
     } else if (line.startsWith("## ")) {
       htmlLines.push(`<h2>${line.slice(3)}</h2>`);
     } else if (line.startsWith("### ")) {
       htmlLines.push(`<h3>${line.slice(4)}</h3>`);
-    }
-
-    // Жирный текст
-    else if (/^\*\*(.+?)\*\*$/.test(line)) {
+    } else if (/^\*\*(.+?)\*\*$/.test(line)) {
       const content = line.replace(/^\*\*(.+?)\*\*$/, "$1");
       htmlLines.push(`<strong>${content}</strong>`);
-    }
-
-    // Списки
-    else if (line.startsWith("- ")) {
+    } else if (line.startsWith("- ")) {
       htmlLines.push(`<ul><li>${line.slice(2)}</li></ul>`);
-    }
-
-    // Нумерация (типа 1. **...)
-    else if (/^\d+\.\s+\*\*(.+?)\*\*:(.+)/.test(line)) {
+    } else if (/^\d+\.\s+\*\*(.+?)\*\*:(.+)/.test(line)) {
       const [, bold, text] = line.match(/^\d+\.\s+\*\*(.+?)\*\*:(.+)/);
       htmlLines.push(`<p><strong>${bold}:</strong> ${text.trim()}</p>`);
-    }
-
-    // Просто текст
-    else {
+    } else {
       htmlLines.push(`<p>${line}</p>`);
     }
   }
 
   return htmlLines.join("\n");
 }
-
 
 function preprocessText(text) {
   return text.split('\n')
