@@ -45,24 +45,30 @@ module.exports = async function generateWord(text) {
 
 function generateTitlePage() {
   return [
-    new Paragraph({ text: '', spacing: { line: 276 } }),
-    new Paragraph({ text: '', spacing: { line: 276 } }),
-    new Paragraph({ text: '', spacing: { line: 276 } }),
+    new Paragraph({ children: [new TextRun({ text: '', size: 1 })], spacing: { line: 5000 } }),
+
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 500 },
+      spacing: { after: 1000 },
       children: [
         new TextRun({ text: 'БИЗНЕС-ПЛАН', bold: true, size: 48 }),
       ],
     }),
-    new Paragraph({ text: '', spacing: { line: 1000 } }),
+
+    // Нижняя часть страницы
     new Paragraph({
       alignment: AlignmentType.LEFT,
-      spacing: { after: 100 },
+      spacing: { before: 3000, after: 100 },
       children: [new TextRun({ text: 'Инициатор проекта: _______________________', size: 28 })],
     }),
     new Paragraph({
       alignment: AlignmentType.LEFT,
+      spacing: { after: 100 },
+      children: [new TextRun({ text: 'Адрес места регистрации: _______________________', size: 28 })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { after: 100 },
       children: [new TextRun({ text: 'Контактный телефон: _______________________', size: 28 })],
     }),
     new Paragraph({
@@ -77,6 +83,7 @@ function generateTitlePage() {
     }),
   ];
 }
+
 
 function processTextToParagraphs(text) {
   const paragraphs = [];
@@ -153,6 +160,19 @@ function processTextToParagraphs(text) {
           spacing: { line: 276 },
         })
       );
+    } else if (/^\d+\.\s+\*\*(.+?)\*\*:(.+)/.test(trimmed)) {
+      const [, boldPart, rest] = trimmed.match(/^\d+\.\s+\*\*(.+?)\*\*:(.+)/);
+      paragraphs.push(
+          new Paragraph({
+            children: [
+              new TextRun({text: `${trimmed.match(/^\d+\./)[0]} `, size: 28}),
+              new TextRun({text: `${boldPart}:`, bold: true, size: 28}),
+              new TextRun({text: ` ${rest.trim()}`, size: 28}),
+            ],
+            spacing: {line: 276},
+            indent: {firstLine: 709},
+          })
+      )
     } else {
       const parts = [];
       let match;
