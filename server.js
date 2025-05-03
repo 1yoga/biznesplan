@@ -56,6 +56,39 @@ app.post('/generate', async (req, res) => {
   })();
 });
 
+app.get("/status/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [plan] = await db.select().from(plans).where(eq(plans.id, id)).limit(1);
+
+    if (!plan) {
+      return res.status(404).json({ error: "План не найден" });
+    }
+
+    // Возвращаем только статус и, если готов, часть ответа
+    const response = {
+      status: plan.status,
+    };
+
+    if (plan.status === "completed") {
+      response.preview = extractPreview(plan.gpt_response);
+    }
+
+    return res.json(response);
+
+  } catch (err) {
+    console.error("Ошибка при проверке статуса:", err);
+    return res.status(500).json({ error: "Внутренняя ошибка сервера" });
+  }
+});
+
+function extractPreview(fullText) {
+  const lines = fullText.split("\n");
+  const previewLines = lines.slice(0, 60); // Примерно 3–4 страницы
+  return previewLines.join("\n");
+}
+
 function preprocessText(text) {
   return text.split('\n')
     .map(line => {
