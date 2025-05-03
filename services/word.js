@@ -34,7 +34,6 @@ module.exports = async function generateWord(text) {
             headingStyleRange: "1-3",
           }),
 
-          new Paragraph({ pageBreakBefore: true }),
 
           ...paragraphs,
         ],
@@ -47,59 +46,42 @@ module.exports = async function generateWord(text) {
 
 function generateTitlePage() {
   return [
+    new Paragraph({ text: '', spacing: { line: 276 } }),
+    new Paragraph({ text: '', spacing: { line: 276 } }),
+    new Paragraph({ text: '', spacing: { line: 276 } }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      children: [
-        new TextRun({ text: "БИЗНЕС-ПЛАН", size: 48, bold: true }),
-      ],
       spacing: { after: 500 },
+      children: [
+        new TextRun({ text: 'БИЗНЕС-ПЛАН', bold: true, size: 48 }),
+      ],
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      children: [
-        new TextRun({
-          text: "Инициатор проекта (ФИО): ________________________",
-          size: 28,
-        }),
-      ],
       spacing: { after: 200 },
+      children: [
+        new TextRun({ text: 'по направлению деятельности', italics: true, size: 28 }),
+      ],
+    }),
+    new Paragraph({ text: '', spacing: { line: 1000 } }),
+    new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { after: 100 },
+      children: [new TextRun({ text: 'Инициатор проекта: _______________________', size: 28 })],
     }),
     new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [
-        new TextRun({
-          text: "Адрес места регистрации: _______________________",
-          size: 28,
-        }),
-      ],
-      spacing: { after: 200 },
+      alignment: AlignmentType.LEFT,
+      children: [new TextRun({ text: 'Контактный телефон: _______________________', size: 28 })],
     }),
     new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [
-        new TextRun({
-          text: "Контактный телефон: ____________________________",
-          size: 28,
-        }),
-      ],
-      spacing: { after: 200 },
+      alignment: AlignmentType.LEFT,
+      spacing: { after: 300 },
+      children: [new TextRun({ text: 'Адрес электронной почты: ________________', size: 28 })],
     }),
     new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [
-        new TextRun({
-          text: "Адрес электронной почты: ______________________",
-          size: 28,
-        }),
-      ],
-      spacing: { after: 400 },
-    }),
-    new Paragraph({ text: "" }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [
-        new TextRun({ text: "г. [Город]  2025 г.", size: 28 }),
-      ],
+      alignment: AlignmentType.RIGHT,
+      spacing: { before: 500 },
+      children: [new TextRun({ text: 'г. [Город], 2025 г.', size: 28 })],
     }),
   ];
 }
@@ -148,6 +130,14 @@ function processTextToParagraphs(text) {
             new TextRun({ text: `${boldPart}:`, bold: true, size: 28 }),
             new TextRun({ text: ` ${rest.trim()}`, size: 28 }),
           ],
+          bullet: { level: 0 },
+          spacing: { line: 276 },
+        })
+      );
+    } else if (/^[\u2022\u25CF\u2013]\s+/.test(trimmed)) {
+      paragraphs.push(
+        new Paragraph({
+          children: [new TextRun({ text: trimmed.replace(/^[\u2022\u25CF\u2013]\s+/, ""), size: 28 })],
           bullet: { level: 0 },
           spacing: { line: 276 },
         })
