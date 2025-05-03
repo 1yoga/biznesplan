@@ -1,9 +1,17 @@
-const { Document, Packer, Paragraph, TextRun, TableOfContents, HeadingLevel, PageBreak } = require('docx');
+const {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  TableOfContents,
+  HeadingLevel,
+} = require('docx');
 
 module.exports = async function generateWord(text) {
   const paragraphs = processTextToParagraphs(text);
 
   const doc = new Document({
+    features: { updateFields: true }, // 💡 Оглавление будет обновлено при открытии
     sections: [
       {
         properties: {
@@ -13,13 +21,23 @@ module.exports = async function generateWord(text) {
         },
         children: [
           ...generateTitlePage(),
-          new PageBreak(),
-          new Paragraph({ text: 'Содержание', heading: HeadingLevel.HEADING_1 }),
-          new TableOfContents("Оглавление", {
-            hyperlink: true,
-            headingStyleRange: "1-3",
+
+          // 🟦 Новая страница перед содержанием
+          new Paragraph({ pageBreakBefore: true }),
+
+          new Paragraph({
+            text: 'Содержание',
+            heading: HeadingLevel.HEADING_1,
+            pageBreakBefore: true,
           }),
-          new PageBreak(),
+          new TableOfContents('Оглавление', {
+            hyperlink: true,
+            headingStyleRange: '1-3',
+          }),
+
+          // 🟦 Новая страница перед основным текстом
+          new Paragraph({ pageBreakBefore: true }),
+
           ...paragraphs,
         ],
       },
@@ -33,25 +51,25 @@ function generateTitlePage() {
   return [
     new Paragraph({
       children: [
-        new TextRun({ text: 'Инициатор проекта (ФИО): ________________________', size: 28 })
+        new TextRun({ text: 'Инициатор проекта (ФИО): ________________________', size: 28 }),
       ],
       spacing: { line: 276 },
     }),
     new Paragraph({
       children: [
-        new TextRun({ text: 'Адрес места регистрации: _______________________', size: 28 })
+        new TextRun({ text: 'Адрес места регистрации: _______________________', size: 28 }),
       ],
       spacing: { line: 276 },
     }),
     new Paragraph({
       children: [
-        new TextRun({ text: 'Контактный телефон: ____________________________', size: 28 })
+        new TextRun({ text: 'Контактный телефон: ____________________________', size: 28 }),
       ],
       spacing: { line: 276 },
     }),
     new Paragraph({
       children: [
-        new TextRun({ text: 'Адрес электронной почты: ______________________', size: 28 })
+        new TextRun({ text: 'Адрес электронной почты: ______________________', size: 28 }),
       ],
       spacing: { line: 276 },
     }),
@@ -59,10 +77,10 @@ function generateTitlePage() {
     new Paragraph({ text: '' }),
     new Paragraph({
       children: [
-        new TextRun({ text: '[город/поселение]  [год]', size: 28 })
+        new TextRun({ text: '[город/поселение]  [год]', size: 28 }),
       ],
       spacing: { line: 276 },
-    })
+    }),
   ];
 }
 
@@ -82,6 +100,7 @@ function processTextToParagraphs(text) {
         text: trimmed.replace(/^#\s+/, ''),
         heading: HeadingLevel.HEADING_1,
         spacing: { line: 276 },
+        pageBreakBefore: true, // каждый новый раздел — с новой страницы
       }));
     } else if (/^##\s+/.test(trimmed)) {
       paragraphs.push(new Paragraph({
@@ -110,7 +129,7 @@ function processTextToParagraphs(text) {
     } else {
       const parts = [];
       let match;
-      let regex = /\*\*(.+?)\*\*/g;
+      const regex = /\*\*(.+?)\*\*/g;
       let lastIndex = 0;
 
       while ((match = regex.exec(trimmed)) !== null) {
