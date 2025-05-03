@@ -83,11 +83,52 @@ app.get("/status/:id", async (req, res) => {
   }
 });
 
-function extractPreview(fullText) {
-  const lines = fullText.split("\n");
-  const previewLines = lines.slice(0, 60); // Примерно 3–4 страницы
-  return previewLines.join("\n");
+function extractPreview(markdown) {
+  const lines = markdown.split("\n").slice(0, 60);
+  const htmlLines = [];
+
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) {
+      htmlLines.push("<br>");
+      continue;
+    }
+
+    // Заголовки
+    if (line.startsWith("# ")) {
+      htmlLines.push(`<h1>${line.slice(2)}</h1>`);
+    } else if (line.startsWith("## ")) {
+      htmlLines.push(`<h2>${line.slice(3)}</h2>`);
+    } else if (line.startsWith("### ")) {
+      htmlLines.push(`<h3>${line.slice(4)}</h3>`);
+    }
+
+    // Жирный текст
+    else if (/^\*\*(.+?)\*\*$/.test(line)) {
+      const content = line.replace(/^\*\*(.+?)\*\*$/, "$1");
+      htmlLines.push(`<strong>${content}</strong>`);
+    }
+
+    // Списки
+    else if (line.startsWith("- ")) {
+      htmlLines.push(`<ul><li>${line.slice(2)}</li></ul>`);
+    }
+
+    // Нумерация (типа 1. **...)
+    else if (/^\d+\.\s+\*\*(.+?)\*\*:(.+)/.test(line)) {
+      const [, bold, text] = line.match(/^\d+\.\s+\*\*(.+?)\*\*:(.+)/);
+      htmlLines.push(`<p><strong>${bold}:</strong> ${text.trim()}</p>`);
+    }
+
+    // Просто текст
+    else {
+      htmlLines.push(`<p>${line}</p>`);
+    }
+  }
+
+  return htmlLines.join("\n");
 }
+
 
 function preprocessText(text) {
   return text.split('\n')
