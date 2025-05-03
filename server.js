@@ -1,4 +1,3 @@
-// ✅ Новый backend код с асинхронной генерацией и Drizzle
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
