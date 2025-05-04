@@ -44,7 +44,7 @@ app.post('/generate', async (req, res) => {
       const fullDocx = await generateWord(clean);
 
       const previewDocx = await generateWord(clean, 2);
-      const previewLink = `https://biznesplan.online/preview/${id}`;
+      const previewLink = `https://biznesplan.online/waiting-page/?id=${id}`;
       await sendMail(previewDocx, data.email, previewLink, fullDocx);
 
       await db.update(plans).set({
@@ -116,7 +116,7 @@ app.post('/form2', async (req, res) => {
       const previewDocx = await generateWord(clean, 2);      // первые 2 секции
       const fullDocx = await generateWord(clean);            // весь текст
 
-      const previewLink = `https://biznesplan.online/preview/${id}`;
+      const previewLink = `https://biznesplan.online/waiting-page/?id=${id}`;
       await sendMail(previewDocx, data.email, previewLink, fullDocx);
 
       await db.update(plans).set({
@@ -133,37 +133,50 @@ app.post('/form2', async (req, res) => {
 });
 
 function extractPreview(markdown) {
-  const lines = markdown.split("\n").slice(0, 60);
+  const lines = markdown.split("\n");
   const htmlLines = [];
+
+  let blockCount = 0;
+  let inList = false;
 
   for (let line of lines) {
     line = line.trim();
-    if (!line) {
-      htmlLines.push("<br>");
-      continue;
-    }
+    if (!line) continue;
+
+    let htmlLine = "";
 
     if (line.startsWith("# ")) {
-      htmlLines.push(`<h1>${line.slice(2)}</h1>`);
+      htmlLine = `<h1>${line.slice(2)}</h1>`;
+      blockCount++;
     } else if (line.startsWith("## ")) {
-      htmlLines.push(`<h2>${line.slice(3)}</h2>`);
+      htmlLine = `<h2>${line.slice(3)}</h2>`;
+      blockCount++;
     } else if (line.startsWith("### ")) {
-      htmlLines.push(`<h3>${line.slice(4)}</h3>`);
+      htmlLine = `<h3>${line.slice(4)}</h3>`;
+      blockCount++;
     } else if (/^\*\*(.+?)\*\*$/.test(line)) {
       const content = line.replace(/^\*\*(.+?)\*\*$/, "$1");
-      htmlLines.push(`<strong>${content}</strong>`);
+      htmlLine = `<strong>${content}</strong>`;
+      blockCount++;
     } else if (line.startsWith("- ")) {
-      htmlLines.push(`<ul><li>${line.slice(2)}</li></ul>`);
+      htmlLine = `<ul><li>${line.slice(2)}</li></ul>`;
     } else if (/^\d+\.\s+\*\*(.+?)\*\*:(.+)/.test(line)) {
       const [, bold, text] = line.match(/^\d+\.\s+\*\*(.+?)\*\*:(.+)/);
-      htmlLines.push(`<p><strong>${bold}:</strong> ${text.trim()}</p>`);
+      htmlLine = `<p><strong>${bold}:</strong> ${text.trim()}</p>`;
+      blockCount++;
     } else {
-      htmlLines.push(`<p>${line}</p>`);
+      htmlLine = `<p>${line}</p>`;
+      blockCount++;
     }
+
+    htmlLines.push(htmlLine);
+
+    if (blockCount >= 2) break;
   }
 
   return htmlLines.join("\n");
 }
+
 
 function preprocessText(text) {
   return text.split('\n')
