@@ -201,19 +201,18 @@ function processTextToParagraphs(text, sectionLimit = null) {
         );
       }
     } else if (/^\d+\.\s+\*\*(.+?)\*\*:(.+)/.test(trimmed)) {
-      const [, boldPart, rest] = trimmed.match(/^\d+\.\s+\*\*(.+?)\*\*:(.+)/);
-      paragraphs.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: `${trimmed.match(/^\d+\./)[0]} `, size: 28 }),
-            new TextRun({ text: `${boldPart}:`, bold: true, size: 28 }),
-            new TextRun({ text: ` ${rest.trim()}`, size: 28 }),
-          ],
-          spacing: { line: 276 },
-          indent: { firstLine: 709 },
-        })
-      );
-    } else {
+        const [, boldPart, rest] = trimmed.match(/^\d+\.\s+\*\*(.+?)\*\*:(.+)/);
+        paragraphs.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: `${boldPart}:`, bold: true, size: 28 }),
+              new TextRun({ text: ` ${rest.trim()}`, size: 28 }),
+            ],
+            numbering: { reference: "numbered-list", level: 0 },
+            spacing: { line: 276 },
+          })
+        );
+      } else {
       const parts = [];
       const regex = /\*\*(.+?)\*\*/g;
       let lastIndex = 0;

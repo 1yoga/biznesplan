@@ -9,6 +9,7 @@ const generatePlan = require('./services/openai');
 const generateWord = require('./services/word');
 const sendMail = require('./services/mailer');
 const generatePrompt = require('./services/prompt');
+const generatePromptForm2 = require('./services/prompt2');
 
 const app = express();
 
@@ -83,6 +84,52 @@ app.get("/status/:id", async (req, res) => {
     console.error("Ошибка при проверке статуса:", err);
     return res.status(500).json({ error: "Внутренняя ошибка сервера" });
   }
+});
+
+app.post('/form2', async (req, res) => {
+  const { data } = req.body;
+
+  if (!data?.email) {
+    return res.status(400).json({ error: 'Не указан email' });
+  }
+
+  const id = uuidv4();
+
+  // Сохраняем заявку
+  await db.insert(plans).values({
+    id,
+    email: data.email,
+    form_data: data,
+    status: 'pending'
+  });
+
+  // Возвращаем фронту, чтобы он редиректнул на страницу ожидания
+  res.json({ success: true, id });
+
+  // Фоновая генерация
+  await (async () => {
+    try {
+      const prompt = generatePromptForm2(data);
+      const response = await generatePlan(prompt);
+      const clean = preprocessText(response);
+
+      const previewDocx = await generateWord(clean, 2);      // первые 2 секции
+      const fullDocx = await generateWord(clean);            // весь текст
+
+      const previewLink = `https://biznesplan.online/preview/${id}`;
+      await sendMail(previewDocx, data.email, previewLink, fullDocx);
+
+      await db.update(plans).set({
+        gpt_prompt: prompt,
+        gpt_response: response,
+        status: 'completed',
+        updated_at: new Date()
+      }).where(eq(plans.id, id));
+    } catch (err) {
+      console.error('❌ Ошибка генерации form2:', err);
+      await db.update(plans).set({ status: 'error' }).where(eq(plans.id, id));
+    }
+  })();
 });
 
 function extractPreview(markdown) {
