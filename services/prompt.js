@@ -54,7 +54,6 @@ module.exports = function generatePrompt(data) {
   - Учёт налогов: УСН 6% или 15%, Патент и др.
   - Чистая прибыль = Доход – Расход – Налоги
   - Если указываешь срок окупаемости — он должен сходиться по расчётам.
-  ${personalFormNote}
 `;
 
     let structure = '';
@@ -121,6 +120,8 @@ module.exports = function generatePrompt(data) {
 ${structure}
 
 ${commonInstructions}
+
+${personalFormNote}
 
 📥 Данные клиента:
 ${parts.join('\n')}

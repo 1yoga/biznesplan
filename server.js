@@ -136,46 +136,43 @@ function extractPreview(markdown) {
   const lines = markdown.split("\n");
   const htmlLines = [];
 
-  let blockCount = 0;
-  let inList = false;
+  let chapterCount = 0;
+  let collecting = false;
 
   for (let line of lines) {
     line = line.trim();
     if (!line) continue;
 
-    let htmlLine = "";
-
     if (line.startsWith("# ")) {
-      htmlLine = `<h1>${line.slice(2)}</h1>`;
-      blockCount++;
-    } else if (line.startsWith("## ")) {
-      htmlLine = `<h2>${line.slice(3)}</h2>`;
-      blockCount++;
-    } else if (line.startsWith("### ")) {
-      htmlLine = `<h3>${line.slice(4)}</h3>`;
-      blockCount++;
-    } else if (/^\*\*(.+?)\*\*$/.test(line)) {
-      const content = line.replace(/^\*\*(.+?)\*\*$/, "$1");
-      htmlLine = `<strong>${content}</strong>`;
-      blockCount++;
-    } else if (line.startsWith("- ")) {
-      htmlLine = `<ul><li>${line.slice(2)}</li></ul>`;
-    } else if (/^\d+\.\s+\*\*(.+?)\*\*:(.+)/.test(line)) {
-      const [, bold, text] = line.match(/^\d+\.\s+\*\*(.+?)\*\*:(.+)/);
-      htmlLine = `<p><strong>${bold}:</strong> ${text.trim()}</p>`;
-      blockCount++;
-    } else {
-      htmlLine = `<p>${line}</p>`;
-      blockCount++;
+      chapterCount++;
+      if (chapterCount > 2) break;
+      collecting = true;
+      htmlLines.push(`<h1>${line.slice(2)}</h1>`);
+      continue;
     }
 
-    htmlLines.push(htmlLine);
+    if (!collecting) continue;
 
-    if (blockCount >= 2) break;
+    if (line.startsWith("## ")) {
+      htmlLines.push(`<h2>${line.slice(3)}</h2>`);
+    } else if (line.startsWith("### ")) {
+      htmlLines.push(`<h3>${line.slice(4)}</h3>`);
+    } else if (/^\*\*(.+?)\*\*$/.test(line)) {
+      const content = line.replace(/^\*\*(.+?)\*\*$/, "$1");
+      htmlLines.push(`<strong>${content}</strong>`);
+    } else if (line.startsWith("- ")) {
+      htmlLines.push(`<ul><li>${line.slice(2)}</li></ul>`);
+    } else if (/^\d+\.\s+\*\*(.+?)\*\*:(.+)/.test(line)) {
+      const [, bold, text] = line.match(/^\d+\.\s+\*\*(.+?)\*\*:(.+)/);
+      htmlLines.push(`<p><strong>${bold}:</strong> ${text.trim()}</p>`);
+    } else {
+      htmlLines.push(`<p>${line}</p>`);
+    }
   }
 
   return htmlLines.join("\n");
 }
+
 
 
 function preprocessText(text) {
