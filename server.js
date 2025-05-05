@@ -74,10 +74,6 @@ app.get("/status/:id", async (req, res) => {
       status: plan.status,
     };
 
-    if (plan.status === "completed") {
-      response.preview = extractPreview(plan.gpt_response);
-    }
-
     return res.json(response);
 
   } catch (err) {
