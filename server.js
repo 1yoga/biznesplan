@@ -10,6 +10,7 @@ const generateWord = require('./services/word');
 const sendMail = require('./services/mailer');
 const generatePrompt = require('./services/prompt');
 const generatePromptForm2 = require('./services/prompt2');
+const {STRUCTURES} = require("./services/consts");
 
 const app = express();
 
@@ -82,6 +83,26 @@ app.get("/status/:id", async (req, res) => {
   }
 });
 
+app.get('/preview/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [plan] = await db.select().from(plans).where(eq(plans.id, id)).limit(1);
+    if (!plan || !plan.gpt_response) {
+      return res.status(404).json({ error: 'Бизнес-план не найден' });
+    }
+
+    const supportType = plan.form_data?.supportType;
+    const structure = STRUCTURES[supportType] || STRUCTURES.default;
+
+    const previewBlocks = extractPreviewBlocks(plan.gpt_response);
+    return res.json({ preview: previewBlocks, structure });
+  } catch (err) {
+    console.error('❌ Ошибка при получении превью:', err);
+    return res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
 app.post('/form2', async (req, res) => {
   const { data } = req.body;
 
@@ -127,6 +148,29 @@ app.post('/form2', async (req, res) => {
     }
   })();
 });
+
+function extractPreviewBlocks(markdown) {
+  const lines = markdown.split("\n");
+  const blocks = [];
+  let currentBlock = null;
+
+  for (let line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const heading = /^#\s+(.+)/.exec(trimmed);
+    if (heading) {
+      if (currentBlock) blocks.push(currentBlock);
+      currentBlock = { title: heading[1], content: "" };
+    } else if (currentBlock) {
+      currentBlock.content += trimmed + "\n";
+    }
+  }
+
+  if (currentBlock) blocks.push(currentBlock);
+
+  return blocks.slice(0, 2);
+}
 
 function extractPreview(markdown) {
   const lines = markdown.split("\n");
