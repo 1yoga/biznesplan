@@ -10,7 +10,7 @@ const generateWord = require('./services/word');
 const sendMail = require('./services/mailer');
 const generatePrompt = require('./services/prompt');
 const generatePromptForm2 = require('./services/prompt2');
-const {STRUCTURES} = require("./services/consts");
+const { STRUCTURES } = require('./services/consts');
 
 const app = express();
 
