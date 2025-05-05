@@ -41,3 +41,5 @@ const STRUCTURES = {
     "8. Выводы и перспективы"
   ]
 };
+
+module.exports = { STRUCTURES };
