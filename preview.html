@@ -7,11 +7,14 @@
   const id = new URLSearchParams(window.location.search).get('id');
   const API = `https://gpt-plan-api-production.up.railway.app/preview/${id}`;
 
-const renderTitlePage = () => {
+const renderTitlePage = (structure) => {
+  const contents = structure.map((item, i) => `<li>${item}</li>`).join('');
   return `
     <div class="bp-page title-page">
       <div class="title-content">
         <div class="bp-title">БИЗНЕС-ПЛАН</div>
+        <h2>Содержание</h2>
+        <ul class="bp-contents">${contents}</ul>
       </div>
       <div class="footer-info">
         <p>Инициатор проекта: _______________________</p>
@@ -23,6 +26,7 @@ const renderTitlePage = () => {
     </div>
   `;
 };
+
 
   const renderPage = (title, content = '') => {
     return `
@@ -54,8 +58,7 @@ const renderTitlePage = () => {
       const { preview, structure } = json;
 
       container.innerHTML = `
-        ${renderTitlePage()}
-        ${renderContentsPage(structure)}
+        ${renderTitlePage(structure)}
         ${renderPage(preview[0]?.title, preview[0]?.content)}
         ${renderPage(preview[1]?.title, preview[1]?.content)}
       `;
@@ -69,6 +72,13 @@ const renderTitlePage = () => {
 </script>
 
 <style>
+  .bp-contents {
+    font-size: 14pt;
+    line-height: 1.6;
+    padding-left: 20px;
+    margin-top: 40px;
+  }
+
   .bp-page {
     width: 794px; /* A4 width */
     height: 1123px; /* A4 height */

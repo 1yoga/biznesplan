@@ -13,6 +13,7 @@ const generatePromptForm2 = require('./services/prompt2');
 const { STRUCTURES } = require('./services/consts');
 
 const YooKassa = require('yookassa');
+const {sendFull, sendPreview} = require("./services/mailer");
 const yookassa = new YooKassa({
   shopId: process.env.YOOKASSA_SHOP_ID,
   secretKey: process.env.YOOKASSA_SECRET_KEY,
@@ -90,7 +91,7 @@ app.get('/payment-success', async (req, res) => {
 
     // Отправка письма
     const fullDocx = await generateWord(plan.gpt_response);
-    await sendMail(fullDocx, plan.email, null, fullDocx);
+    await sendFull(fullDocx, plan.email);
 
     // Обновляем поля оплаты
     await db.update(plans).set({
@@ -130,11 +131,9 @@ app.post('/generate', async (req, res) => {
       const response = await generatePlan(prompt);
       const clean = preprocessText(response);
 
-      const fullDocx = await generateWord(clean);
-
       const previewDocx = await generateWord(clean, 2);
       const previewLink = `https://biznesplan.online/waiting-page/?id=${id}`;
-      await sendMail(previewDocx, data.email, previewLink, fullDocx);
+      await sendPreview(previewDocx, data.email, previewLink);
 
       await db.update(plans).set({
         gpt_prompt: prompt,
