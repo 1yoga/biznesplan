@@ -53,10 +53,14 @@ app.post('/pay', async (req, res) => {
       },
       capture: true,
       description: `Оплата бизнес-плана для ${plan.email}`,
-      metadata: {
-        planId,
-      }
+      metadata: { planId }
     });
+
+    // Сохраняем платёж в базу
+    await db.update(plans).set({
+      yookassa_payment_id: payment.id,
+      yookassa_status: payment.status
+    }).where(eq(plans.id, planId));
 
     return res.json({ confirmation_url: payment.confirmation.confirmation_url });
   } catch (err) {
@@ -64,6 +68,45 @@ app.post('/pay', async (req, res) => {
     return res.status(500).json({ error: 'Ошибка оплаты' });
   }
 });
+
+app.get('/payment-success', async (req, res) => {
+  const { id } = req.query;
+
+  if (!id) {
+    return res.status(400).send('Отсутствует ID бизнес-плана');
+  }
+
+  try {
+    const [plan] = await db.select().from(plans).where(eq(plans.id, id)).limit(1);
+
+    if (!plan) {
+      return res.status(404).send('План не найден');
+    }
+
+    // Если уже оплачен — не отправляем повторно
+    if (plan.is_paid) {
+      return res.send('✅ Платёж уже подтверждён. План уже был отправлен.');
+    }
+
+    // Отправка письма
+    const fullDocx = await generateWord(plan.gpt_response);
+    await sendMail(fullDocx, plan.email, null, fullDocx);
+
+    // Обновляем поля оплаты
+    await db.update(plans).set({
+      is_paid: true,
+      paid_at: new Date(),
+      yookassa_status: 'succeeded',
+      sent_at: new Date()
+    }).where(eq(plans.id, id));
+
+    return res.send('🎉 Спасибо за оплату! Бизнес-план отправлен на ваш email.');
+  } catch (err) {
+    console.error('❌ Ошибка на /payment-success:', err);
+    return res.status(500).send('Внутренняя ошибка');
+  }
+});
+
 
 
 

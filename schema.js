@@ -10,6 +10,11 @@ const plans = pgTable('plans', {
   gpt_response: text('gpt_response'),
   created_at: timestamp('created_at').defaultNow(),
   updated_at: timestamp('updated_at').defaultNow(),
+  yookassa_payment_id: text('yookassa_payment_id'),
+  yookassa_status: text('yookassa_status'),
+  is_paid: boolean('is_paid').default(false),
+  paid_at: timestamp('paid_at'),
+  sent_at: timestamp('sent_at'),
 });
 
 module.exports = { plans };
