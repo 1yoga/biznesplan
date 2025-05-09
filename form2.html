@@ -1,0 +1,44 @@
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.querySelector('#wpforms-form-423');
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    if (!form.checkValidity()) return;
+    e.preventDefault();
+
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Генерация...";
+
+    const form2Data = {
+      email: formData.get('wpforms[fields][4]') || '',
+      location: formData.get('wpforms[fields][2]') || '',
+      name: formData.get('wpforms[fields][3]') || '',
+      note: formData.get('wpforms[fields][5]') || ''
+    };
+
+    try {
+      const response = await fetch("https://gpt-plan-api-production.up.railway.app/form2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: form2Data })
+      });
+
+      const result = await response.json();
+      const id = result.id;
+
+      if (!id) throw new Error("UUID не получен");
+
+      // редирект на страницу ожидания
+      window.location.href = `https://biznesplan.online/waiting-page?id=${id}`;
+    } catch (err) {
+      console.error("❌ Ошибка при отправке формы:", err);
+      alert("Произошла ошибка. Попробуйте ещё раз позже.");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Отправить →";
+    }
+  });
+});
+</script>

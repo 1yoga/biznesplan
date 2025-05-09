@@ -12,6 +12,12 @@ const generatePrompt = require('./services/prompt');
 const generatePromptForm2 = require('./services/prompt2');
 const { STRUCTURES } = require('./services/consts');
 
+const YooKassa = require('yookassa');
+const yookassa = new YooKassa({
+  shopId: process.env.YOOKASSA_SHOP_ID,
+  secretKey: process.env.YOOKASSA_SECRET_KEY,
+});
+
 const app = express();
 
 app.use(cors({
@@ -21,6 +27,45 @@ app.use(cors({
   optionsSuccessStatus: 204
 }));
 app.use(express.json());
+
+app.post('/pay', async (req, res) => {
+  const { planId } = req.body;
+
+  if (!planId) {
+    return res.status(400).json({ error: 'Не указан ID бизнес-плана' });
+  }
+
+  try {
+    const [plan] = await db.select().from(plans).where(eq(plans.id, planId)).limit(1);
+
+    if (!plan) {
+      return res.status(404).json({ error: 'План не найден' });
+    }
+
+    const payment = await yookassa.createPayment({
+      amount: {
+        value: process.env.PLAN_PRICE || '490.00',
+        currency: 'RUB',
+      },
+      confirmation: {
+        type: 'redirect',
+        return_url: `https://biznesplan.online/payment-success?id=${planId}`,
+      },
+      capture: true,
+      description: `Оплата бизнес-плана для ${plan.email}`,
+      metadata: {
+        planId,
+      }
+    });
+
+    return res.json({ confirmation_url: payment.confirmation.confirmation_url });
+  } catch (err) {
+    console.error('❌ Ошибка при создании оплаты:', err);
+    return res.status(500).json({ error: 'Ошибка оплаты' });
+  }
+});
+
+
 
 app.post('/generate', async (req, res) => {
   const { data } = req.body;

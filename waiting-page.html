@@ -1,0 +1,29 @@
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script>
+  const planId = new URLSearchParams(window.location.search).get('id');
+
+  if (!planId) {
+    const msg = document.getElementById('waiting-message');
+    if (msg) msg.innerHTML = "<p style='color: red;'>Ошибка: не указан ID бизнес-плана.</p>";
+  } else {
+    const apiUrl = `https://gpt-plan-api-production.up.railway.app/status/${planId}`;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(apiUrl);
+        if (!res.ok) return;
+
+        const json = await res.json();
+        console.log('Ответ сервера:', json);
+
+        if (json.status === 'completed') {
+          clearInterval(interval);
+
+          window.location.href = `/preview?id=${planId}`;
+        }
+      } catch (err) {
+        console.error('Ошибка при проверке статуса:', err);
+      }
+    }, 1000);
+  }
+</script>

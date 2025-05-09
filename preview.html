@@ -1,0 +1,163 @@
+<div id="preview-container" style="padding: 40px 0; font-family: 'Times New Roman', serif;">
+  <div id="loading" style="text-align: center; font-size: 20px;">⏳ Генерация предпросмотра...</div>
+</div>
+
+<script>
+  const container = document.getElementById('preview-container');
+  const id = new URLSearchParams(window.location.search).get('id');
+  const API = `https://gpt-plan-api-production.up.railway.app/preview/${id}`;
+
+const renderTitlePage = () => {
+  return `
+    <div class="bp-page title-page">
+      <div class="title-content">
+        <div class="bp-title">БИЗНЕС-ПЛАН</div>
+      </div>
+      <div class="footer-info">
+        <p>Инициатор проекта: _______________________</p>
+        <p>Адрес места регистрации: _______________________</p>
+        <p>Контактный телефон: _______________________</p>
+        <p>Адрес электронной почты: _______________________</p>
+        <p>[Город], 2025 г.</p>
+      </div>
+    </div>
+  `;
+};
+
+  const renderPage = (title, content = '') => {
+    return `
+      <div class="bp-page">
+        ${title ? `<h1>${title}</h1>` : ''}
+        ${content ? `<div class="bp-content">${marked.parse(content)}</div>` : ''}
+      </div>
+    `;
+  };
+
+  const renderContentsPage = (structure) => {
+    const items = structure.map((item, i) => `<li>${item}</li>`).join('');
+    return `
+      <div class="bp-page">
+        <h1>Содержание</h1>
+        <ul>${items}</ul>
+      </div>
+    `;
+  };
+
+  const fetchAndRender = async () => {
+    try {
+      const res = await fetch(API);
+      if (!res.ok) throw new Error("Ошибка при загрузке превью");
+
+      const json = await res.json();
+      document.getElementById('loading').remove();
+
+      const { preview, structure } = json;
+
+      container.innerHTML = `
+        ${renderTitlePage()}
+        ${renderContentsPage(structure)}
+        ${renderPage(preview[0]?.title, preview[0]?.content)}
+        ${renderPage(preview[1]?.title, preview[1]?.content)}
+      `;
+    } catch (err) {
+      container.innerHTML = `<p style="color: red; text-align: center;">❌ Ошибка загрузки предпросмотра.</p>`;
+      console.error(err);
+    }
+  };
+
+  fetchAndRender();
+</script>
+
+<style>
+  .bp-page {
+    width: 794px; /* A4 width */
+    height: 1123px; /* A4 height */
+    margin: 0 auto 40px;
+    padding: 60px 50px;
+    background: white;
+    box-shadow: 0 0 20px rgba(0,0,0,0.15);
+    box-sizing: border-box;
+    page-break-after: always;
+    overflow-y: auto;
+  }
+
+  .bp-page h1 {
+    font-size: 20pt;
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .bp-page ul {
+    font-size: 14pt;
+    line-height: 1.6;
+    padding-left: 20px;
+  }
+
+  .bp-content p {
+    font-size: 14pt;
+    line-height: 1.6;
+    margin-bottom: 15px;
+    text-align: justify;
+  }
+
+  .bp-content strong {
+    font-weight: bold;
+  }
+
+  .bp-content ul {
+    margin-left: 20px;
+    font-size: 14pt;
+  }
+
+.bp-title {
+  font-size: 28pt;
+  text-align: center;
+  margin-top: 300px;
+  font-weight: bold;
+}
+
+.footer-info {
+  position: absolute;
+  bottom: 80px;
+  left: 60px;
+  font-size: 12pt;
+  line-height: 1.6;
+}
+
+.title-page {
+  position: relative;
+}
+</style>
+
+<!-- Подключаем Marked.js для Markdown to HTML -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script>
+  const id = new URLSearchParams(window.location.search).get('id');
+document.addEventListener('DOMContentLoaded', () => {
+  const button = document.querySelector('#pay-button');
+  if (!button) return;
+
+  button.addEventListener('click', async (e) => {
+    e.preventDefault();
+    button.textContent = "Ожидайте...";
+
+    try {
+      const res = await fetch('https://gpt-plan-api-production.up.railway.app/pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId: id }) // передай нужный ID или email
+      });
+
+      const data = await res.json();
+      if (!data.confirmation_url) throw new Error('Нет ссылки');
+
+      window.location.href = data.confirmation_url;
+    } catch (err) {
+      console.error(err);
+      alert('Ошибка при создании оплаты. Попробуйте позже.');
+      button.textContent = "Оплатить →";
+    }
+  });
+});
+</script>

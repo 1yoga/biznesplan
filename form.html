@@ -1,0 +1,64 @@
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.querySelector('.wpforms-form');
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    if (!form.checkValidity()) return;
+    e.preventDefault();
+
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Генерация...";
+
+    const businessPlanData = {
+      email: formData.get('wpforms[fields][20]') || '',
+      supportType: formData.get('wpforms[fields][10]') || '',
+      businessName: formData.get('wpforms[fields][23]') || '',
+      businessForm: formData.get('wpforms[fields][27]') || '',
+      businessDescription: formData.get('wpforms[fields][24]') || '',
+      location: formData.get('wpforms[fields][33]') || '',
+      startupAmount: formData.get('wpforms[fields][38]') || '',
+      spendingPurpose: formData.get('wpforms[fields][12]') || '',
+      ownMoney: formData.get('wpforms[fields][34]') || '',
+      ownAssets: formData.get('wpforms[fields][13]') || '',
+      clientsPerMonth: formData.get('wpforms[fields][16]') || '',
+      productPrices: formData.get('wpforms[fields][31]') || '',
+      targetClients: formData.get('wpforms[fields][21]') || '',
+      competitors: formData.get('wpforms[fields][4]') || '',
+      advantages: formData.get('wpforms[fields][29]') || '',
+      needsRepair: formData.get('wpforms[fields][37]') || '',
+      repairCost: formData.get('wpforms[fields][30]') || '',
+      rawMaterials: formData.get('wpforms[fields][32]') || '',
+      lifeImprovement: formData.get('wpforms[fields][39]') || '',
+      socialImpact: formData.get('wpforms[fields][15]') || '',
+      hasExperience: formData.get('wpforms[fields][7]') || '',
+      experienceDetails: formData.get('wpforms[fields][35]') || '',
+      risks: formData.get('wpforms[fields][19]') || '',
+      hiringPlans: formData.get('wpforms[fields][8]') || ''
+    };
+
+    try {
+      const response = await fetch("https://gpt-plan-api-production.up.railway.app/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: businessPlanData })
+      });
+
+      const result = await response.json();
+      const id = result.id;
+
+      if (!id) throw new Error("UUID не получен");
+
+      // редирект на страницу ожидания с id
+      window.location.href = `https://biznesplan.online/waiting-page?id=${id}`;
+    } catch (err) {
+      console.error("❌ Ошибка при отправке формы:", err);
+      alert("Произошла ошибка. Попробуйте ещё раз позже.");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Отправить";
+    }
+  });
+});
+</script>
