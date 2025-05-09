@@ -1,0 +1,33 @@
+<div id="success-message" style="font-family: 'Arial', sans-serif; text-align: center; padding: 60px;">
+  <h1>⏳ Обрабатываем оплату...</h1>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", async () => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+
+    const container = document.getElementById("success-message");
+
+    if (!id) {
+      container.innerHTML = `<h1 style="color: red;">❌ Ошибка: отсутствует ID заказа.</h1>`;
+      return;
+    }
+
+    try {
+      const res = await fetch(`https://gpt-plan-api-production.up.railway.app/payment-success?id=${id}`);
+      const text = await res.text();
+
+      container.innerHTML = `
+        <h1>✅ Спасибо за оплату!</h1>
+        <p style="font-size: 18px; max-width: 600px; margin: 20px auto;">
+          ${text}
+        </p>
+        <p style="font-size: 16px; color: #666;">Проверьте вашу почту (в том числе папку "Спам").</p>
+      `;
+    } catch (err) {
+      console.error("❌ Ошибка при подтверждении оплаты:", err);
+      container.innerHTML = `<h1 style="color: red;">❌ Ошибка при обработке оплаты. Попробуйте позже.</h1>`;
+    }
+  });
+</script>

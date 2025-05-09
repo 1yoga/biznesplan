@@ -1,4 +1,4 @@
-const { pgTable, text, jsonb, uuid, timestamp } = require('drizzle-orm/pg-core');
+const { pgTable, text, jsonb, uuid, timestamp, boolean} = require('drizzle-orm/pg-core');
 
 const plans = pgTable('plans', {
   id: uuid('id').defaultRandom().primaryKey(),
