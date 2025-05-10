@@ -64,7 +64,7 @@ app.post('/pay', async (req, res) => {
           description: "Бизнес-план",
           quantity: 1,
           amount: {
-            value: process.env.PLAN_PRICE || '490.00',
+            value: process.env.PLAN_PRICE || '1500.00',
             currency: 'RUB'
           },
           vat_code: 1,
