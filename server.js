@@ -45,7 +45,7 @@ app.post('/pay', async (req, res) => {
 
     const payment = await yookassa.createPayment({
       amount: {
-        value: process.env.PLAN_PRICE || '490.00',
+        value: process.env.PLAN_PRICE || '1500.00',
         currency: 'RUB',
       },
       confirmation: {
@@ -54,7 +54,25 @@ app.post('/pay', async (req, res) => {
       },
       capture: true,
       description: `Оплата бизнес-плана для ${plan.email}`,
-      metadata: { planId }
+      metadata: { planId },
+      receipt: {
+      customer: {
+        email: plan.email
+      },
+      items: [
+        {
+          description: "Бизнес-план",
+          quantity: 1,
+          amount: {
+            value: process.env.PLAN_PRICE || '490.00',
+            currency: 'RUB'
+          },
+          vat_code: 1,
+          payment_mode: 'full_payment',
+          payment_subject: 'service'
+        }
+      ]
+    }
     });
 
     // Сохраняем платёж в базу
