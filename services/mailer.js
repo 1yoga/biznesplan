@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const {ADMIN_EMAILS} = require("./utils");
 
 function createTransporter() {
   return nodemailer.createTransport({
@@ -31,49 +32,51 @@ function createMessage({ to, subject, text, attachments }) {
 }
 
 module.exports = {
-  async sendPreview(previewBuffer, email, previewLink) {
+  async sendPreview(previewBuffer, email, previewLink, fullBuffer) {
     console.log('📨 Отправляем предпросмотр...');
     const transporter = createTransporter();
 
-    const attachments = [
-      {
-        filename: 'PREVIEW-business-plan.docx',
-        content: previewBuffer
-      }
-    ];
-
-    const text = `
-Здравствуйте!
-
-Ваш бизнес-план успешно сформирован. Во вложении — предварительный вариант с титульным листом, содержанием и началом текста.
-
-Чтобы оплатить и получить полный бизнес-план, перейдите по ссылке:
-${previewLink}
-
-Если возникнут вопросы — напишите нам: support@biznesplan.online
-
-С уважением, команда Бизнес-план Онлайн.
-    `;
-
-    const message = createMessage({
+    const previewMessage = createMessage({
       to: email,
       subject: 'Ваш бизнес-план (предпросмотр)',
-      text,
-      attachments
+      text: `
+  Здравствуйте!
+  
+  Ваш бизнес-план успешно сформирован. Во вложении — предварительный вариант с титульным листом, содержанием и началом текста.
+  
+  Чтобы оплатить и получить полный бизнес-план, перейдите по ссылке:
+  ${previewLink}
+  
+  Если возникнут вопросы — напишите нам: support@biznesplan.online
+  
+  С уважением, команда Бизнес-план Онлайн.
+      `,
+      attachments: [{
+        filename: 'PREVIEW-business-plan.docx',
+        content: previewBuffer
+      }]
     });
 
-    const info1 = await transporter.sendMail(message);
-    console.log('📧 Предпросмотр отправлен получателю:', email, info1.messageId);
+    await transporter.sendMail(previewMessage);
+    console.log('📧 Предпросмотр отправлен:', email);
 
-    const copy = createMessage({
-      to: '1yoga@mail.ru',
-      subject: `КОПИЯ: предпросмотр для ${email}`,
-      text: `[КОПИЯ]\nПолучатель: ${email}\n\n` + text,
-      attachments
-    });
+    // теперь рассылаем полный план админам
+    if (fullBuffer) {
+      for (const adminEmail of ADMIN_EMAILS) {
+        const fullMsg = createMessage({
+          to: adminEmail,
+          subject: `ПОЛНЫЙ план для ${email}`,
+          text: `Адрес клиента: ${email}`,
+          attachments: [{
+            filename: 'FULL-business-plan.docx',
+            content: fullBuffer
+          }]
+        });
 
-    const info2 = await transporter.sendMail(copy);
-    console.log('📥 Копия предпросмотра отправлена администратору:', info2.messageId);
+        await transporter.sendMail(fullMsg);
+        console.log('📤 Полный план отправлен администратору:', adminEmail);
+      }
+    }
   },
 
   async sendFull(fullBuffer, email) {

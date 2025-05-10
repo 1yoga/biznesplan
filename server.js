@@ -108,9 +108,6 @@ app.get('/payment-success', async (req, res) => {
   }
 });
 
-
-
-
 app.post('/generate', async (req, res) => {
   const { data } = req.body;
   if (!data) return res.status(400).json({ error: 'Нет данных формы' });
@@ -132,8 +129,9 @@ app.post('/generate', async (req, res) => {
       const clean = preprocessText(response);
 
       const previewDocx = await generateWord(clean, 2);
+      const fullDocx = await generateWord(clean);
       const previewLink = `https://biznesplan.online/waiting-page/?id=${id}`;
-      await sendPreview(previewDocx, data.email, previewLink);
+      await sendPreview(previewDocx, data.email, previewLink, fullDocx);
 
       await db.update(plans).set({
         gpt_prompt: prompt,
@@ -221,7 +219,7 @@ app.post('/form2', async (req, res) => {
       const fullDocx = await generateWord(clean);            // весь текст
 
       const previewLink = `https://biznesplan.online/waiting-page/?id=${id}`;
-      await sendMail(previewDocx, data.email, previewLink, fullDocx);
+      await sendPreview(previewDocx, data.email, previewLink, fullDocx);
 
       await db.update(plans).set({
         gpt_prompt: prompt,
