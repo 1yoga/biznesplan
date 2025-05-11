@@ -9,8 +9,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const formData = new FormData(form);
     const submitBtn = form.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Генерация...";
+
+    // Создаём заглушку для пользователя
+    const waitingMessage = document.createElement('div');
+    waitingMessage.textContent = "⏳ Подождите, вы будете перенаправлены...";
+    waitingMessage.style.marginTop = '20px';
+    waitingMessage.style.fontWeight = 'bold';
+    waitingMessage.style.fontSize = '16px';
+
+    // Удаляем кнопку и вставляем сообщение
+    submitBtn.parentNode.replaceChild(waitingMessage, submitBtn);
 
     const businessPlanData = {
       email: formData.get('wpforms[fields][20]') || '',
@@ -51,11 +59,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!id) throw new Error("UUID не получен");
 
-      // редирект на страницу ожидания с id
+      // Редирект
       window.location.href = `https://biznesplan.online/waiting-page?id=${id}`;
     } catch (err) {
       console.error("❌ Ошибка при отправке формы:", err);
       alert("Произошла ошибка. Попробуйте ещё раз позже.");
+
+      // Восстановим кнопку, если произошла ошибка
+      waitingMessage.replaceWith(submitBtn);
       submitBtn.disabled = false;
       submitBtn.textContent = "Отправить";
     }

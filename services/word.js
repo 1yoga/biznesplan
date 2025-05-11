@@ -89,7 +89,6 @@ function generateContentsPage(structure) {
       bullet: { level: 0 },
       spacing: { line: 276 },
     })),
-    new Paragraph({ pageBreakBefore: true })
   ];
 }
 
