@@ -138,38 +138,43 @@ const renderContentsAndFirst = (firstPreview, structure) => {
 
 
   @media (max-width: 768px) {
-    .bp-page {
-      width: 100%;
-      height: auto;
-      padding: 30px 20px;
-      box-shadow: none;
-      margin: 0 auto 20px;
-    }
+  .bp-page {
+    width: 100%;
+    aspect-ratio: 1 / 1.41;
+    height: auto;
+    padding: 5vw;
+    margin: 0 auto 20px;
+    box-shadow: none;
+    background: white;
+    overflow: visible !important;
+    max-height: none !important;
+  }
 
-    .bp-title {
-      font-size: 20pt;
-      margin-top: 150px;
-    }
+  .bp-page h1 {
+    font-size: 5vw;
+    margin-bottom: 3vw;
+  }
 
-    .bp-content p,
-    .bp-content ul,
-    .bp-page ul {
-      font-size: 12pt;
-      line-height: 1.5;
-    }
+  .bp-title {
+    font-size: 6vw;
+    margin-top: 20vh;
+  }
 
-    .footer-info {
-      position: static;
-      margin-top: 40px;
-      font-size: 10pt;
-    }
+  .bp-content p,
+  .bp-content ul,
+  .bp-page ul {
+    font-size: 4vw;
+    line-height: 1.5;
+  }
 
-    .bp-page h1 {
-      font-size: 16pt;
-      margin-bottom: 20px;
-    }
+  .footer-info {
+    position: static;
+    margin-top: 6vw;
+    font-size: 3.5vw;
   }
 }
+
+
 </style>
 
 <!-- Подключаем Marked.js для Markdown to HTML -->

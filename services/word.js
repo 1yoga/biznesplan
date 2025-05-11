@@ -8,7 +8,7 @@ const {
   AlignmentType,
 } = require("docx");
 
-module.exports = async function generateWord(text, sectionLimit = null) {
+module.exports = async function generateWord(text, sectionLimit = null, structure = []) {
   const paragraphs = processTextToParagraphs(text, sectionLimit);
 
   const doc = new Document({
@@ -25,14 +25,7 @@ module.exports = async function generateWord(text, sectionLimit = null) {
 
           new Paragraph({ pageBreakBefore: true }),
 
-          new Paragraph({
-            text: "Содержание",
-            heading: HeadingLevel.HEADING_1,
-          }),
-          new TableOfContents("Оглавление", {
-            hyperlink: true,
-            headingStyleRange: "1-3",
-          }),
+          ...generateContentsPage(structure),
 
           ...paragraphs,
         ],
@@ -81,6 +74,22 @@ function generateTitlePage() {
       spacing: { before: 500 },
       children: [new TextRun({ text: '[Город], 2025 г.', size: 28 })],
     }),
+  ];
+}
+
+function generateContentsPage(structure) {
+  return [
+    new Paragraph({
+      text: "Содержание",
+      heading: HeadingLevel.HEADING_1,
+      spacing: { after: 400 },
+    }),
+    ...structure.map(title => new Paragraph({
+      text: title,
+      bullet: { level: 0 },
+      spacing: { line: 276 },
+    })),
+    new Paragraph({ pageBreakBefore: true })
   ];
 }
 
