@@ -7,42 +7,40 @@
   const id = new URLSearchParams(window.location.search).get('id');
   const API = `https://gpt-plan-api-production.up.railway.app/preview/${id}`;
 
-const renderTitlePage = (structure) => {
-  const contents = structure.map((item, i) => `<li>${item}</li>`).join('');
-  return `
-    <div class="bp-page title-page">
-      <div class="title-content">
-        <div class="bp-title">БИЗНЕС-ПЛАН</div>
-        <h2>Содержание</h2>
-        <ul class="bp-contents">${contents}</ul>
-      </div>
-      <div class="footer-info">
-        <p>Инициатор проекта: _______________________</p>
-        <p>Адрес места регистрации: _______________________</p>
-        <p>Контактный телефон: _______________________</p>
-        <p>Адрес электронной почты: _______________________</p>
-        <p>[Город], 2025 г.</p>
-      </div>
-    </div>
-  `;
-};
-
-
-  const renderPage = (title, content = '') => {
+  const renderTitleOnly = () => {
     return `
-      <div class="bp-page">
-        ${title ? `<h1>${title}</h1>` : ''}
-        ${content ? `<div class="bp-content">${marked.parse(content)}</div>` : ''}
+        <div class="bp-page title-page">
+        <div class="title-content">
+          <div class="bp-title">БИЗНЕС-ПЛАН</div>
+        </div>
+        <div class="footer-info">
+          <p>Инициатор проекта: _______________________</p>
+          <p>Адрес места регистрации: _______________________</p>
+          <p>Контактный телефон: _______________________</p>
+          <p>Адрес электронной почты: _______________________</p>
+          <p>[Город], 2025 г.</p>
+        </div>
       </div>
     `;
   };
 
-  const renderContentsPage = (structure) => {
-    const items = structure.map((item, i) => `<li>${item}</li>`).join('');
+const renderContentsAndFirst = (firstPreview, structure) => {
+  const items = structure.map((item, i) => `<li>${item}</li>`).join('');
+  return `
+    <div class="bp-page">
+      <h1>Содержание</h1>
+      <ul class="bp-contents">${items}</ul>
+      ${firstPreview?.title ? `<h1>${firstPreview.title}</h1>` : ''}
+      <div class="bp-content">${marked.parse(firstPreview?.content || '')}</div>
+    </div>
+    `;
+};
+
+  const renderPage = (title, content = '') => {
     return `
-      <div class="bp-page">
-        <h1>Содержание</h1>
-        <ul>${items}</ul>
+    <div class="bp-page">
+        ${title ? `<h1>${title}</h1>` : ''}
+        ${content ? `<div class="bp-content">${marked.parse(content)}</div>` : ''}
       </div>
     `;
   };
@@ -57,11 +55,11 @@ const renderTitlePage = (structure) => {
 
       const { preview, structure } = json;
 
-      container.innerHTML = `
-        ${renderTitlePage(structure)}
-        ${renderPage(preview[0]?.title, preview[0]?.content)}
-        ${renderPage(preview[1]?.title, preview[1]?.content)}
-      `;
+      container.innerHTML =
+        `${renderTitleOnly()}
+        ${renderContentsAndFirst(preview[0], structure)}
+        ${renderPage(preview[1]?.title, preview[1]?.content)}`
+      ;
     } catch (err) {
       container.innerHTML = `<p style="color: red; text-align: center;">❌ Ошибка загрузки предпросмотра.</p>`;
       console.error(err);
@@ -80,8 +78,8 @@ const renderTitlePage = (structure) => {
   }
 
   .bp-page {
-    width: 794px; /* A4 width */
-    height: 1123px; /* A4 height */
+    width: 794px; /* A4 */
+    height: 1123px; /* A4 */
     margin: 0 auto 40px;
     padding: 60px 50px;
     background: white;
@@ -136,6 +134,41 @@ const renderTitlePage = (structure) => {
 
 .title-page {
   position: relative;
+}
+
+
+  @media (max-width: 768px) {
+    .bp-page {
+      width: 100%;
+      height: auto;
+      padding: 30px 20px;
+      box-shadow: none;
+      margin: 0 auto 20px;
+    }
+
+    .bp-title {
+      font-size: 20pt;
+      margin-top: 150px;
+    }
+
+    .bp-content p,
+    .bp-content ul,
+    .bp-page ul {
+      font-size: 12pt;
+      line-height: 1.5;
+    }
+
+    .footer-info {
+      position: static;
+      margin-top: 40px;
+      font-size: 10pt;
+    }
+
+    .bp-page h1 {
+      font-size: 16pt;
+      margin-bottom: 20px;
+    }
+  }
 }
 </style>
 
