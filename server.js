@@ -44,7 +44,7 @@ app.post('/pay', async (req, res) => {
 
     const payment = await yookassa.createPayment({
       amount: {
-        value: process.env.PLAN_PRICE || '1500.00',
+        value: process.env.PLAN_PRICE || '990.00',
         currency: 'RUB',
       },
       confirmation: {
@@ -63,7 +63,7 @@ app.post('/pay', async (req, res) => {
             description: "Бизнес-план",
             quantity: 1,
             amount: {
-              value: process.env.PLAN_PRICE || '1500.00',
+              value: process.env.PLAN_PRICE || '990.00',
               currency: 'RUB'
             },
             vat_code: 1,
@@ -108,7 +108,7 @@ app.post('/submit-and-pay', async (req, res) => {
     // === СНАЧАЛА создаём платёж ===
     const payment = await yookassa.createPayment({
       amount: {
-        value: process.env.PLAN_PRICE || '1500.00',
+        value: process.env.PLAN_PRICE || '990.00',
         currency: 'RUB',
       },
       confirmation: {
@@ -124,7 +124,7 @@ app.post('/submit-and-pay', async (req, res) => {
           description: "Бизнес-план",
           quantity: 1,
           amount: {
-            value: process.env.PLAN_PRICE || '1500.00',
+            value: process.env.PLAN_PRICE || '990.00',
             currency: 'RUB'
           },
           vat_code: 1,
@@ -152,11 +152,11 @@ app.post('/submit-and-pay', async (req, res) => {
         const supportType = data?.supportType;
         const structure = STRUCTURES[supportType] || STRUCTURES.default;
 
-        const previewDocx = await generateWord(clean, 2, structure);
-        const fullDocx = await generateWord(clean, null, structure);
-        const previewLink = `https://biznesplan.online/waiting-page/?id=${id}`;
+        //const previewDocx = await generateWord(clean, 2, structure);
+        //const fullDocx = await generateWord(clean, null, structure);
+        //const previewLink = `https://biznesplan.online/waiting-page/?id=${id}`;
 
-        await sendPreview(previewDocx, data.email, previewLink, fullDocx);
+        //await sendPreview(previewDocx, data.email, previewLink, fullDocx);
 
         await db.update(plans).set({
           gpt_prompt: prompt,
