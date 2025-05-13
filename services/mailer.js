@@ -32,49 +32,6 @@ function createMessage({ to, subject, text, attachments }) {
 }
 
 module.exports = {
-  async sendPreview(previewBuffer, email, previewLink, fullBuffer) {
-    const transporter = createTransporter();
-
-    /*const previewMessage = createMessage({
-      to: email,
-      subject: 'Ваш бизнес-план (предпросмотр)',
-      text: `
-  Здравствуйте!
-  
-  Ваш бизнес-план успешно сформирован. Во вложении — предварительный вариант с титульным листом, содержанием и началом текста.
-  
-  Чтобы оплатить и получить полный бизнес-план, перейдите по ссылке:
-  ${previewLink}
-  
-  Если возникнут вопросы — напишите нам: buznesplan@yandex.com
-  
-  С уважением, команда Бизнес-план Онлайн.
-      `,
-      attachments: [{
-        filename: 'PREVIEW-business-plan.docx',
-        content: previewBuffer
-      }]
-    });
-
-    await transporter.sendMail(previewMessage);*/
-    if (fullBuffer) {
-      for (const adminEmail of ADMIN_EMAILS) {
-        const fullMsg = createMessage({
-          to: adminEmail,
-          subject: `план для ${email}`,
-          text: `Адрес клиента: ${email}`,
-          attachments: [{
-            filename: 'FULL-business-plan.docx',
-            content: fullBuffer
-          }]
-        });
-
-        await transporter.sendMail(fullMsg);
-        console.log('📤 план отправлен администратору:', adminEmail);
-      }
-    }
-  },
-
   async sendFull(fullBuffer, email) {
     console.log('📨 Отправляем бизнес-план...');
     const transporter = createTransporter();
