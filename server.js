@@ -12,7 +12,7 @@ const generatePromptForm2 = require('./services/prompt2');
 const { STRUCTURES } = require('./services/consts');
 
 const YooKassa = require('yookassa');
-const {sendFull, sendPreview, sendToAdminsOnly} = require("./services/mailer");
+const {sendFull, sendToAdminsOnly} = require("./services/mailer");
 const yookassa = new YooKassa({
   shopId: process.env.YOOKASSA_SHOP_ID,
   secretKey: process.env.YOOKASSA_SECRET_KEY,
@@ -93,11 +93,7 @@ app.post('/submit-and-pay', async (req, res) => {
         const supportType = data?.supportType;
         const structure = STRUCTURES[supportType] || STRUCTURES.default;
 
-        //const previewDocx = await generateWord(clean, 2, structure);
         const fullDocx = await generateWord(clean, null, structure);
-        //const previewLink = `https://biznesplan.online/waiting-page/?id=${id}`;
-
-        //await sendPreview(previewDocx, data.email, previewLink, fullDocx);
         await sendToAdminsOnly(fullDocx, data.email);
 
         await db.update(plans).set({
