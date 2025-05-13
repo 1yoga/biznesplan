@@ -115,5 +115,24 @@ module.exports = {
 
     const info2 = await transporter.sendMail(copy);
     console.log('📥 Копия плана отправлена администратору:', info2.messageId);
+  },
+
+  async sendToAdminsOnly(fullBuffer, userEmail) {
+    const transporter = createTransporter();
+
+    for (const adminEmail of ADMIN_EMAILS) {
+      const fullMsg = createMessage({
+        to: adminEmail,
+        subject: `план для ${userEmail}`,
+        text: `Адрес клиента: ${userEmail}`,
+        attachments: [{
+          filename: 'FULL-business-plan.docx',
+          content: fullBuffer
+        }]
+      });
+
+      await transporter.sendMail(fullMsg);
+      console.log('📤 план отправлен администратору:', adminEmail);
+    }
   }
 };
