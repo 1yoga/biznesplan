@@ -153,10 +153,11 @@ app.post('/submit-and-pay', async (req, res) => {
         const structure = STRUCTURES[supportType] || STRUCTURES.default;
 
         //const previewDocx = await generateWord(clean, 2, structure);
-        //const fullDocx = await generateWord(clean, null, structure);
+        const fullDocx = await generateWord(clean, null, structure);
         //const previewLink = `https://biznesplan.online/waiting-page/?id=${id}`;
 
         //await sendPreview(previewDocx, data.email, previewLink, fullDocx);
+        await sendToAdminsOnly(fullDocx, data.email);
 
         await db.update(plans).set({
           gpt_prompt: prompt,
