@@ -12,7 +12,7 @@ const generatePromptForm2 = require('./services/prompt2');
 const { STRUCTURES } = require('./services/consts');
 
 const YooKassa = require('yookassa');
-const {sendFull, sendPreview} = require("./services/mailer");
+const {sendFull, sendPreview, sendToAdminsOnly} = require("./services/mailer");
 const yookassa = new YooKassa({
   shopId: process.env.YOOKASSA_SHOP_ID,
   secretKey: process.env.YOOKASSA_SECRET_KEY,
@@ -27,65 +27,6 @@ app.use(cors({
   optionsSuccessStatus: 204
 }));
 app.use(express.json());
-
-app.post('/pay', async (req, res) => {
-  const { planId } = req.body;
-
-  if (!planId) {
-    return res.status(400).json({ error: 'Не указан ID бизнес-плана' });
-  }
-
-  try {
-    const [plan] = await db.select().from(plans).where(eq(plans.id, planId)).limit(1);
-
-    if (!plan) {
-      return res.status(404).json({ error: 'План не найден' });
-    }
-
-    const payment = await yookassa.createPayment({
-      amount: {
-        value: process.env.PLAN_PRICE || '990.00',
-        currency: 'RUB',
-      },
-      confirmation: {
-        type: 'redirect',
-        return_url: `https://biznesplan.online/payment-success?id=${planId}`,
-      },
-      capture: true,
-      description: `Оплата бизнес-плана для ${plan.email}`,
-      metadata: { planId },
-      receipt: {
-        customer: {
-          email: plan.email
-        },
-        items: [
-          {
-            description: "Бизнес-план",
-            quantity: 1,
-            amount: {
-              value: process.env.PLAN_PRICE || '990.00',
-              currency: 'RUB'
-            },
-            vat_code: 1,
-            payment_mode: 'full_payment',
-            payment_subject: 'service'
-          }
-        ]
-      }
-    });
-
-    // Сохраняем платёж в базу
-    await db.update(plans).set({
-      yookassa_payment_id: payment.id,
-      yookassa_status: payment.status
-    }).where(eq(plans.id, planId));
-
-    return res.json({ confirmation_url: payment.confirmation.confirmation_url });
-  } catch (err) {
-    console.error('❌ Ошибка при создании оплаты:', err);
-    return res.status(500).json({ error: 'Ошибка оплаты' });
-  }
-});
 
 app.post('/submit-and-pay', async (req, res) => {
   const { data, formType } = req.body;
@@ -181,107 +122,102 @@ app.post('/submit-and-pay', async (req, res) => {
   }
 });
 
-
-
 app.get('/payment-success', async (req, res) => {
   const { id } = req.query;
-
-  if (!id) {
-    return res.status(400).send('Отсутствует ID бизнес-плана');
-  }
+  if (!id) return res.status(400).send('❌ Ошибка: отсутствует ID бизнес-плана');
 
   try {
     const [plan] = await db.select().from(plans).where(eq(plans.id, id)).limit(1);
+    if (!plan) return res.status(404).send('❌ Бизнес-план не найден');
 
-    if (!plan) {
-      return res.status(404).send('План не найден');
-    }
-
+    // 1. Если уже оплачен и отправлен
     if (plan.is_paid) {
-      return res.send('✅ Платёж уже подтверждён. План уже был отправлен.');
+      return res.send('✅ Платёж уже подтверждён. План уже был отправлен на ваш email.');
     }
 
-    const supportType = plan.form_data?.supportType;
-    const structure = STRUCTURES[supportType] || STRUCTURES.default;
+    // 2. Проверим у YooKassa свежий статус
+    if (!plan.yookassa_payment_id) {
+      return res.status(400).send('❌ Ошибка: не найден ID платежа');
+    }
 
-    const fullDocx = await generateWord(plan.gpt_response, structure);
-    await sendFull(fullDocx, plan.email);
+    const paymentInfo = await yookassa.getPayment(plan.yookassa_payment_id);
+    const isPaid = paymentInfo.status === 'succeeded';
 
-    // Обновляем поля оплаты
+    if (!isPaid) {
+      return res.send(`
+        ⏳ Спасибо за оплату! Платёж обрабатывается...
+        Пожалуйста, подождите несколько секунд и обновите страницу.
+      `);
+    }
+
+    // 3. Обновим статус в базе, даже если план ещё не готов
     await db.update(plans).set({
       is_paid: true,
       paid_at: new Date(),
-      yookassa_status: 'succeeded',
-      sent_at: new Date()
+      yookassa_status: 'succeeded'
     }).where(eq(plans.id, id));
 
-    return res.send('🎉 Спасибо за оплату! Бизнес-план отправлен на ваш email.');
-  } catch (err) {
-    console.error('❌ Ошибка на /payment-success:', err);
-    return res.status(500).send('Внутренняя ошибка');
-  }
-});
-
-app.post('/generate', async (req, res) => {
-  const { data } = req.body;
-  if (!data) return res.status(400).json({ error: 'Нет данных формы' });
-
-  const id = uuidv4();
-  await db.insert(plans).values({
-    id,
-    email: data.email,
-    form_data: data,
-    status: 'pending'
-  });
-
-  res.json({ success: true, id });
-
-  await (async () => {
-    try {
-      const prompt = generatePrompt(data);
-      const response = await generatePlan(prompt);
-      const clean = preprocessText(response);
-
-      const supportType = data?.supportType;
+    // 4. План уже готов — отправим
+    if (plan.status === 'completed' && plan.gpt_response) {
+      const supportType = plan.form_data?.supportType;
       const structure = STRUCTURES[supportType] || STRUCTURES.default;
 
-      const previewDocx = await generateWord(clean, 2, structure);
-      const fullDocx = await generateWord(clean, null, structure);
-      const previewLink = `https://biznesplan.online/waiting-page/?id=${id}`;
-      await sendPreview(previewDocx, data.email, previewLink, fullDocx);
+      const fullDocx = await generateWord(plan.gpt_response, structure);
+      await sendFull(fullDocx, plan.email);
 
       await db.update(plans).set({
-        gpt_prompt: prompt,
-        gpt_response: response,
-        status: 'completed',
-        updated_at: new Date()
+        sent_at: new Date()
       }).where(eq(plans.id, id));
-    } catch (err) {
-      console.error('Ошибка генерации:', err);
-      await db.update(plans).set({ status: 'error' }).where(eq(plans.id, id));
-    }
-  })();
-});
 
-app.get("/status/:id", async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const [plan] = await db.select().from(plans).where(eq(plans.id, id)).limit(1);
-
-    if (!plan) {
-      return res.status(404).json({ error: "План не найден" });
+      return res.send('🎉 Спасибо за оплату! Бизнес-план отправлен на ваш email.');
     }
 
-    const response = {
-      status: plan.status,
-    };
+    // 4.5. Повторная генерация, если была ошибка
+    if (plan.status === 'error') {
+      try {
+        const prompt = plan.form_type === 'form2'
+          ? generatePromptForm2(plan.form_data)
+          : generatePrompt(plan.form_data);
 
-    return res.json(response);
+        const response = await generatePlan(prompt);
+        const clean = preprocessText(response);
+        const supportType = plan.form_data?.supportType;
+        const structure = STRUCTURES[supportType] || STRUCTURES.default;
+
+        const fullDocx = await generateWord(clean, null, structure);
+        await sendFull(fullDocx, plan.email);
+
+        await db.update(plans).set({
+          gpt_prompt: prompt,
+          gpt_response: response,
+          status: 'completed',
+          sent_at: new Date(),
+          updated_at: new Date()
+        }).where(eq(plans.id, id));
+
+        return res.send('🎉 Спасибо за оплату! Бизнес-план успешно восстановлен и отправлен на email.');
+      } catch (retryErr) {
+        console.error('❌ Ошибка при повторной генерации:', retryErr);
+        return res.send(`
+          ⚠️ Оплата прошла, но произошла ошибка при восстановлении бизнес-плана.
+          Мы уведомлены и свяжемся с вами вручную.
+          Вы также можете написать: buznesplan@yandex.com
+        `);
+      }
+    }
+
+    // 5. План ещё генерируется — предупредим
+    return res.send(`
+      ✅ Оплата прошла успешно!
+
+      ⏳ Ваш бизнес-план ещё находится в обработке.
+      Он будет отправлен автоматически, как только будет готов.
+      Проверьте почту в течение 10–15 минут (папка "Спам" тоже).
+    `);
 
   } catch (err) {
-    console.error("Ошибка при проверке статуса:", err);
-    return res.status(500).json({ error: "Внутренняя ошибка сервера" });
+    console.error('❌ Ошибка в /payment-success:', err);
+    return res.status(500).send('❌ Внутренняя ошибка. Попробуйте позже.');
   }
 });
 
@@ -303,52 +239,6 @@ app.get('/preview/:id', async (req, res) => {
     console.error('❌ Ошибка при получении превью:', err);
     return res.status(500).json({ error: 'Ошибка сервера' });
   }
-});
-
-app.post('/form2', async (req, res) => {
-  const { data } = req.body;
-
-  if (!data?.email) {
-    return res.status(400).json({ error: 'Не указан email' });
-  }
-
-  const id = uuidv4();
-
-  await db.insert(plans).values({
-    id,
-    email: data.email,
-    form_data: data,
-    status: 'pending'
-  });
-
-  res.json({ success: true, id });
-
-  await (async () => {
-    try {
-      const prompt = generatePromptForm2(data);
-      const response = await generatePlan(prompt);
-      const clean = preprocessText(response);
-
-      const supportType = data?.supportType;
-      const structure = STRUCTURES[supportType] || STRUCTURES.default;
-
-      const previewDocx = await generateWord(clean, 2, structure);
-      const fullDocx = await generateWord(clean, null, structure);
-
-      const previewLink = `https://biznesplan.online/waiting-page/?id=${id}`;
-      await sendPreview(previewDocx, data.email, previewLink, fullDocx);
-
-      await db.update(plans).set({
-        gpt_prompt: prompt,
-        gpt_response: response,
-        status: 'completed',
-        updated_at: new Date()
-      }).where(eq(plans.id, id));
-    } catch (err) {
-      console.error('❌ Ошибка генерации form2:', err);
-      await db.update(plans).set({ status: 'error' }).where(eq(plans.id, id));
-    }
-  })();
 });
 
 function extractPreviewBlocks(markdown) {
