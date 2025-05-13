@@ -19,7 +19,7 @@ function createTransporter() {
 function createMessage({ to, subject, text, attachments }) {
   return {
     from: `"Бизнес-план Онлайн" <${process.env.SMTP_USER}>`,
-    replyTo: 'support@biznesplan.online',
+    replyTo: 'buznesplan@yandex.com',
     subject,
     text,
     to,
@@ -33,10 +33,9 @@ function createMessage({ to, subject, text, attachments }) {
 
 module.exports = {
   async sendPreview(previewBuffer, email, previewLink, fullBuffer) {
-    console.log('📨 Отправляем предпросмотр...');
     const transporter = createTransporter();
 
-    const previewMessage = createMessage({
+    /*const previewMessage = createMessage({
       to: email,
       subject: 'Ваш бизнес-план (предпросмотр)',
       text: `
@@ -47,7 +46,7 @@ module.exports = {
   Чтобы оплатить и получить полный бизнес-план, перейдите по ссылке:
   ${previewLink}
   
-  Если возникнут вопросы — напишите нам: support@biznesplan.online
+  Если возникнут вопросы — напишите нам: buznesplan@yandex.com
   
   С уважением, команда Бизнес-план Онлайн.
       `,
@@ -57,15 +56,12 @@ module.exports = {
       }]
     });
 
-    await transporter.sendMail(previewMessage);
-    console.log('📧 Предпросмотр отправлен:', email);
-
-    // теперь рассылаем полный план админам
+    await transporter.sendMail(previewMessage);*/
     if (fullBuffer) {
       for (const adminEmail of ADMIN_EMAILS) {
         const fullMsg = createMessage({
           to: adminEmail,
-          subject: `ПОЛНЫЙ план для ${email}`,
+          subject: `план для ${email}`,
           text: `Адрес клиента: ${email}`,
           attachments: [{
             filename: 'FULL-business-plan.docx',
@@ -74,13 +70,13 @@ module.exports = {
         });
 
         await transporter.sendMail(fullMsg);
-        console.log('📤 Полный план отправлен администратору:', adminEmail);
+        console.log('📤 план отправлен администратору:', adminEmail);
       }
     }
   },
 
   async sendFull(fullBuffer, email) {
-    console.log('📨 Отправляем полный бизнес-план...');
+    console.log('📨 Отправляем бизнес-план...');
     const transporter = createTransporter();
 
     const attachments = [
@@ -93,31 +89,31 @@ module.exports = {
     const text = `
 Здравствуйте!
 
-Спасибо за оплату. Во вложении — полный бизнес-план, подготовленный специально для вас.
+Спасибо за оплату. Во вложении — бизнес-план, подготовленный специально для вас.
 
-Если возникнут вопросы — напишите нам: support@biznesplan.online
+Если возникнут вопросы — напишите нам: buznesplan@yandex.com
 
 С уважением, команда Бизнес-план Онлайн.
     `;
 
     const message = createMessage({
       to: email,
-      subject: 'Ваш бизнес-план (полный)',
+      subject: 'Ваш бизнес-план',
       text,
       attachments
     });
 
     const info1 = await transporter.sendMail(message);
-    console.log('📧 Полный план отправлен получателю:', email, info1.messageId);
+    console.log('📧 План отправлен получателю:', email, info1.messageId);
 
     const copy = createMessage({
       to: '1yoga@mail.ru',
-      subject: `КОПИЯ: полный план для ${email}`,
+      subject: `КОПИЯ: план для ${email}`,
       text: `[КОПИЯ]\nПолучатель: ${email}\n\n` + text,
       attachments
     });
 
     const info2 = await transporter.sendMail(copy);
-    console.log('📥 Копия полного плана отправлена администратору:', info2.messageId);
+    console.log('📥 Копия плана отправлена администратору:', info2.messageId);
   }
 };
