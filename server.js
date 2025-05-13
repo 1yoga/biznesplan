@@ -87,6 +87,101 @@ app.post('/pay', async (req, res) => {
   }
 });
 
+app.post('/submit-and-pay', async (req, res) => {
+  const { data, formType } = req.body;
+
+  if (!data?.email) {
+    return res.status(400).json({ error: 'Не указан email' });
+  }
+
+  const id = uuidv4();
+
+  // Создаём пустую запись в БД
+  await db.insert(plans).values({
+    id,
+    email: data.email,
+    form_data: data,
+    status: 'pending'
+  });
+
+  try {
+    // === СНАЧАЛА создаём платёж ===
+    const payment = await yookassa.createPayment({
+      amount: {
+        value: process.env.PLAN_PRICE || '1500.00',
+        currency: 'RUB',
+      },
+      confirmation: {
+        type: 'redirect',
+        return_url: `https://biznesplan.online/payment-success?id=${id}`,
+      },
+      capture: true,
+      description: `Оплата бизнес-плана для ${data.email}`,
+      metadata: { planId: id },
+      receipt: {
+        customer: { email: data.email },
+        items: [{
+          description: "Бизнес-план",
+          quantity: 1,
+          amount: {
+            value: process.env.PLAN_PRICE || '1500.00',
+            currency: 'RUB'
+          },
+          vat_code: 1,
+          payment_mode: 'full_payment',
+          payment_subject: 'service'
+        }]
+      }
+    });
+
+    // Обновляем план с ID платежа
+    await db.update(plans).set({
+      yookassa_payment_id: payment.id,
+      yookassa_status: payment.status
+    }).where(eq(plans.id, id));
+
+    // === ФОН: начинаем генерацию ===
+    (async () => {
+      try {
+        const prompt = formType === 'form2'
+          ? generatePromptForm2(data)
+          : generatePrompt(data);
+
+        const response = await generatePlan(prompt);
+        const clean = preprocessText(response);
+        const supportType = data?.supportType;
+        const structure = STRUCTURES[supportType] || STRUCTURES.default;
+
+        const previewDocx = await generateWord(clean, 2, structure);
+        const fullDocx = await generateWord(clean, null, structure);
+        const previewLink = `https://biznesplan.online/waiting-page/?id=${id}`;
+
+        await sendPreview(previewDocx, data.email, previewLink, fullDocx);
+
+        await db.update(plans).set({
+          gpt_prompt: prompt,
+          gpt_response: response,
+          status: 'completed',
+          updated_at: new Date()
+        }).where(eq(plans.id, id));
+      } catch (err) {
+        console.error('❌ Ошибка генерации в фоне:', err);
+        await db.update(plans).set({ status: 'error' }).where(eq(plans.id, id));
+      }
+    })();
+
+    // Отправляем ссылку на оплату СРАЗУ
+    return res.json({ confirmation_url: payment.confirmation.confirmation_url });
+
+  } catch (err) {
+    console.error('❌ Ошибка при создании оплаты:', err);
+    await db.update(plans).set({ status: 'error' }).where(eq(plans.id, id));
+    return res.status(500).json({ error: 'Ошибка оплаты' });
+  }
+});
+
+
+
 app.get('/payment-success', async (req, res) => {
   const { id } = req.query;
 
