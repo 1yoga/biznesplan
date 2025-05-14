@@ -126,96 +126,23 @@ app.get('/payment-success', async (req, res) => {
     const [plan] = await db.select().from(plans).where(eq(plans.id, id)).limit(1);
     if (!plan) return res.status(404).send('❌ Бизнес-план не найден');
 
-    // 1. Если уже оплачен и отправлен
-    if (plan.is_paid) {
-      return res.send('✅ Платёж уже подтверждён. План уже был отправлен на ваш email.');
+    if (plan.sent_at) {
+      return res.send('✅ Платёж прошёл. Бизнес-план уже отправлен вам на почту.');
     }
 
-    // 2. Проверим у YooKassa свежий статус
-    if (!plan.yookassa_payment_id) {
-      return res.status(400).send('❌ Ошибка: не найден ID платежа');
-    }
-
-    const paymentInfo = await yookassa.getPayment(plan.yookassa_payment_id);
-    const isPaid = paymentInfo.status === 'succeeded';
-
-    if (!isPaid) {
-      return res.send(`
-        ⏳ Спасибо за оплату! Платёж обрабатывается...
-        Пожалуйста, подождите несколько секунд и обновите страницу.
-      `);
-    }
-
-    // 3. Обновим статус в базе, даже если план ещё не готов
-    await db.update(plans).set({
-      is_paid: true,
-      paid_at: new Date(),
-      yookassa_status: 'succeeded'
-    }).where(eq(plans.id, id));
-
-    // 4. План уже готов — отправим
-    if (plan.status === 'completed' && plan.gpt_response) {
-      const supportType = plan.form_data?.supportType;
-      const structure = STRUCTURES[supportType] || STRUCTURES.default;
-
-      const fullDocx = await generateWord(plan.gpt_response, structure);
-      await sendFull(fullDocx, plan.email);
-
-      await db.update(plans).set({
-        sent_at: new Date()
-      }).where(eq(plans.id, id));
-
-      return res.send('🎉 Спасибо за оплату! Бизнес-план отправлен на ваш email.');
-    }
-
-    // 4.5. Повторная генерация, если была ошибка
-    if (plan.status === 'error') {
-      try {
-        const prompt = plan.form_type === 'form2'
-          ? generatePromptForm2(plan.form_data)
-          : generatePrompt(plan.form_data);
-
-        const response = await generatePlan(prompt);
-        const clean = preprocessText(response);
-        const supportType = plan.form_data?.supportType;
-        const structure = STRUCTURES[supportType] || STRUCTURES.default;
-
-        const fullDocx = await generateWord(clean, null, structure);
-        await sendFull(fullDocx, plan.email);
-
-        await db.update(plans).set({
-          gpt_prompt: prompt,
-          gpt_response: response,
-          status: 'completed',
-          sent_at: new Date(),
-          updated_at: new Date()
-        }).where(eq(plans.id, id));
-
-        return res.send('🎉 Спасибо за оплату! Бизнес-план успешно восстановлен и отправлен на email.');
-      } catch (retryErr) {
-        console.error('❌ Ошибка при повторной генерации:', retryErr);
-        return res.send(`
-          ⚠️ Оплата прошла, но произошла ошибка при восстановлении бизнес-плана.
-          Мы уведомлены и свяжемся с вами вручную.
-          Вы также можете написать: buznesplan@yandex.com
-        `);
-      }
-    }
-
-    // 5. План ещё генерируется — предупредим
     return res.send(`
       ✅ Оплата прошла успешно!
 
-      ⏳ Ваш бизнес-план ещё находится в обработке.
-      Он будет отправлен автоматически, как только будет готов.
-      Проверьте почту в течение 10–15 минут (папка "Спам" тоже).
+      ⏳ Ваш бизнес-план находится в обработке.
+      Он будет отправлен на почту в течение 10–15 минут.
+      Проверьте папку "Спам" на всякий случай.
     `);
-
   } catch (err) {
     console.error('❌ Ошибка в /payment-success:', err);
     return res.status(500).send('❌ Внутренняя ошибка. Попробуйте позже.');
   }
 });
+
 
 app.get('/preview/:id', async (req, res) => {
   const { id } = req.params;
@@ -240,47 +167,76 @@ app.get('/preview/:id', async (req, res) => {
 app.post('/yookassa-webhook', express.json(), async (req, res) => {
   try {
     const body = req.body;
-    
-    console.log(body)
 
     if (body.event !== 'payment.succeeded') return res.sendStatus(200);
-
     const payment = body.object;
     const planId = payment.metadata?.planId;
 
     if (!planId) return res.status(400).send('❌ Нет planId в metadata');
 
     const [plan] = await db.select().from(plans).where(eq(plans.id, planId)).limit(1);
-    if (!plan || plan.is_paid) return res.sendStatus(200); // уже отправлен
+    if (!plan || plan.is_paid) return res.sendStatus(200);
 
-    // Обновляем статус оплаты
+    // Помечаем как оплаченный
     await db.update(plans).set({
       is_paid: true,
       paid_at: new Date(),
       yookassa_status: 'succeeded'
     }).where(eq(plans.id, planId));
 
-    // Если план уже сгенерирован — отправляем
-    if (plan.status === 'completed' && plan.gpt_response) {
+    // Запускаем отправку в фоне
+    await trySendPlanById(planId);
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('❌ Ошибка в /yookassa-webhook:', err);
+    res.sendStatus(500);
+  }
+});
+
+async function safeSendFull(docx, email, retries = 3, delayMs = 3000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await sendFull(docx, email);
+      return true;
+    } catch (err) {
+      console.error(`❌ Ошибка отправки письма (попытка ${i + 1}):`, err);
+      await new Promise(res => setTimeout(res, delayMs));
+    }
+  }
+  return false;
+}
+
+
+async function trySendPlanById(planId, retries = 30, intervalMs = 10000) {
+  for (let i = 0; i < retries; i++) {
+    const [plan] = await db.select().from(plans).where(eq(plans.id, planId)).limit(1);
+    if (!plan) {
+      console.error(`❌ План ${planId} не найден`);
+      return;
+    }
+
+    if (plan.status === 'completed' && plan.gpt_response && plan.is_paid && !plan.sent_at) {
       const supportType = plan.form_data?.supportType;
       const structure = STRUCTURES[supportType] || STRUCTURES.default;
       const fullDocx = await generateWord(plan.gpt_response, structure);
-
-      await sendFull(fullDocx, plan.email);
-
-      await db.update(plans).set({
-        sent_at: new Date()
-      }).where(eq(plans.id, planId));
-
-      console.log(`📬 План по плану ${planId} отправлен по webhook`);
+      const success = await safeSendFull(fullDocx, plan.email);
+      if (success) {
+        await db.update(plans).set({ sent_at: new Date() }).where(eq(plans.id, planId));
+        console.log(`📨 План ${planId} успешно отправлен`);
+      } else {
+        console.warn(`⚠️ План ${planId} не удалось отправить после ${retries} попыток`);
+      }
+      return;
     }
 
-    return res.sendStatus(200);
-  } catch (err) {
-    console.error('❌ Ошибка в /yookassa-webhook:', err);
-    return res.sendStatus(500);
+    // План не готов — ждём и пробуем снова
+    console.log(`⏳ План ${planId} ещё не готов. Попытка ${i + 1}/${retries}`);
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
   }
-});
+
+  console.warn(`⚠️ План ${planId} так и не был сгенерирован после ${retries} попыток`);
+}
 
 function extractPreviewBlocks(markdown) {
   const lines = markdown.split("\n");
