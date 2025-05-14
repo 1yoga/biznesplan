@@ -237,6 +237,51 @@ app.get('/preview/:id', async (req, res) => {
   }
 });
 
+app.post('/yookassa-webhook', express.json(), async (req, res) => {
+  try {
+    const body = req.body;
+    
+    console.log(body)
+
+    if (body.event !== 'payment.succeeded') return res.sendStatus(200);
+
+    const payment = body.object;
+    const planId = payment.metadata?.planId;
+
+    if (!planId) return res.status(400).send('❌ Нет planId в metadata');
+
+    const [plan] = await db.select().from(plans).where(eq(plans.id, planId)).limit(1);
+    if (!plan || plan.is_paid) return res.sendStatus(200); // уже отправлен
+
+    // Обновляем статус оплаты
+    await db.update(plans).set({
+      is_paid: true,
+      paid_at: new Date(),
+      yookassa_status: 'succeeded'
+    }).where(eq(plans.id, planId));
+
+    // Если план уже сгенерирован — отправляем
+    if (plan.status === 'completed' && plan.gpt_response) {
+      const supportType = plan.form_data?.supportType;
+      const structure = STRUCTURES[supportType] || STRUCTURES.default;
+      const fullDocx = await generateWord(plan.gpt_response, structure);
+
+      await sendFull(fullDocx, plan.email);
+
+      await db.update(plans).set({
+        sent_at: new Date()
+      }).where(eq(plans.id, planId));
+
+      console.log(`📬 План по плану ${planId} отправлен по webhook`);
+    }
+
+    return res.sendStatus(200);
+  } catch (err) {
+    console.error('❌ Ошибка в /yookassa-webhook:', err);
+    return res.sendStatus(500);
+  }
+});
+
 function extractPreviewBlocks(markdown) {
   const lines = markdown.split("\n");
   const blocks = [];
