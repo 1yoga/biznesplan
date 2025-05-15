@@ -118,6 +118,59 @@ app.post('/submit-and-pay', async (req, res) => {
   }
 });
 
+app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, res) => {
+  try {
+    const data = req.body;
+
+    console.log('📥 Получены данные формы от Tilda:', data);
+
+    if (!data.email) {
+      return res.status(400).json({ error: 'Не указан email' });
+    }
+
+    const id = uuidv4();
+
+    await db.insert(plans).values({
+      id,
+      email: data.email,
+      form_data: data,
+      status: 'pending'
+    });
+
+    const prompt = data.formType === 'form2'
+      ? generatePromptForm2(data)
+      : generatePrompt(data);
+
+    (async () => {
+      try {
+        const response = await generatePlan(prompt);
+        const clean = preprocessText(response);
+        const supportType = data?.supportType;
+        const structure = STRUCTURES[supportType] || STRUCTURES.default;
+
+        const fullDocx = await generateWord(clean, null, structure);
+        await sendToAdminsOnly(fullDocx, data.email);
+
+        await db.update(plans).set({
+          gpt_prompt: prompt,
+          gpt_response: response,
+          status: 'completed',
+          updated_at: new Date()
+        }).where(eq(plans.id, id));
+      } catch (err) {
+        console.error('❌ Ошибка генерации для Tilda:', err);
+        await db.update(plans).set({ status: 'error' }).where(eq(plans.id, id));
+      }
+    })();
+
+    res.status(200).json({ success: true, message: 'Форма успешно принята. Проверьте почту после оплаты.' });
+  } catch (err) {
+    console.error('❌ Ошибка обработки формы от Tilda:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+
 app.get('/payment-success', async (req, res) => {
   const { id } = req.query;
   if (!id) return res.status(400).send('❌ Ошибка: отсутствует ID бизнес-плана');
