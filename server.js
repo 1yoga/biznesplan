@@ -124,6 +124,8 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
 
     console.log('📥 Получены данные формы от Tilda:', data);
 
+    res.status(200).json({ success: true, message: 'Форма успешно принята. Проверьте почту после оплаты.' });
+
     if (!data.email) {
       return res.status(400).json({ error: 'Не указан email' });
     }
