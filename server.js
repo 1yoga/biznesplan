@@ -10,6 +10,7 @@ const generateWord = require('./services/word');
 const generatePrompt = require('./services/prompt');
 const generatePrompt2 = require('./services/prompt2');
 const generatePromptForm1 = require('./services/tilda/promptForm1');
+const generatePromptForm2 = require('./services/tilda/promptForm2');
 const generatePlanTilda = require('./services/tilda/openai');
 const { STRUCTURES } = require('./services/consts');
 
@@ -187,7 +188,7 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
 
         const prompts = isForm1
           ? [generatePromptForm1(data)]
-          : generatePrompt(data); // form2 → массив из 3-х
+          : generatePromptForm2(data); // form2 → массив из 3-х
 
         const buffers = [];
 
@@ -196,7 +197,7 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
           const documentId = uuidv4();
           console.log(`🧠 Генерация GPT для документа ${i + 1} / ${prompts.length}`);
 
-          const response = await generatePlanTilda(prompt);
+          const response = await generatePlanTilda(prompt, data.formname);
           const clean = preprocessText(response);
 
           const structure = [
@@ -251,9 +252,6 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
     return res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
-
-
-
 
 app.get('/payment-success', async (req, res) => {
   const { id } = req.query;
