@@ -121,110 +121,130 @@ app.post('/submit-and-pay', async (req, res) => {
 });
 
 app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, res) => {
-      const data = req.body;
+  const data = req.body;
+  console.log('📥 Получены данные формы от Tilda:', data);
 
-      console.log('📥 Получены данные формы от Tilda:', data);
+  if (!data.email) {
+    return res.status(400).json({ error: 'Не указан email' });
+  }
 
-      if (!data.email) {
-        return res.status(400).json({error: 'Не указан email'});
+  if (data.formname !== 'form1' && data.formname !== 'form2') {
+    return res.status(400).json({ error: 'Некорректный formname' });
+  }
+
+  const isForm1 = data.formname === 'form1';
+  const orderId = uuidv4();
+
+  // Создаём заказ
+  await db.insert(orders).values({
+    id: orderId,
+    email: data.email,
+    form_type: data.formname,
+    form_data: data,
+    status: 'pending'
+  });
+
+  try {
+    // Создаём платёж
+    const amount = isForm1 ? process.env.FORM1_PRICE : process.env.FORM2_PRICE;
+    const payment = await yookassa.createPayment({
+      amount: {
+        value: amount,
+        currency: 'RUB',
+      },
+      confirmation: {
+        type: 'redirect',
+        return_url: `https://biznesplan.online/payment-success?id=${orderId}`,
+      },
+      capture: true,
+      description: `Оплата бизнес-плана для ${data.email}`,
+      metadata: { planId: orderId },
+      receipt: {
+        customer: { email: data.email },
+        items: [
+          {
+            description: 'Бизнес-план',
+            quantity: 1,
+            amount: {
+              value: amount,
+              currency: 'RUB'
+            },
+            vat_code: 1,
+            payment_mode: 'full_payment',
+            payment_subject: 'service'
+          }
+        ]
       }
+    });
 
-      if (data.formname !== 'form1' && data.formname !== 'form2') {
-        return res.status(400).json({error: 'Не корректный formname'});
-      }
+    // Обновляем заказ
+    await db.update(orders).set({
+      yookassa_payment_id: payment.id,
+      yookassa_status: payment.status
+    }).where(eq(orders.id, orderId));
 
-      const isFrom1 = data.formname === 'form1';
-
-      const id = uuidv4();
-
-      await db.insert(plans).values({
-        id,
-        email: data.email,
-        form_data: data,
-        status: 'pending'
-      });
-
+    // Фоновая генерация бизнес-планов
+    (async () => {
       try {
-        // === СНАЧАЛА создаём платёж ===
-        const payment = await yookassa.createPayment({
-          amount: {
-            value: isFrom1 ? process.env.FORM1_PRICE : process.env.FORM2_PRICE,
-            currency: 'RUB',
-          },
-          confirmation: {
-            type: 'redirect',
-            return_url: `https://biznesplan.online/payment-success?id=${id}`,
-          },
-          capture: true,
-          description: `Оплата бизнес-плана для ${data.email}`,
-          metadata: {planId: id},
-          receipt: {
-            customer: {email: data.email},
-            items: [{
-              description: "Бизнес-план",
-              quantity: 1,
-              amount: {
-                value: isFrom1 ? process.env.FORM1_PRICE : process.env.FORM2_PRICE,
-                currency: 'RUB'
-              },
-              vat_code: 1,
-              payment_mode: 'full_payment',
-              payment_subject: 'service'
-            }]
-          }
-        });
+        const prompts = isForm1
+          ? [generatePromptForm1(data)]
+          : generatePrompt(data); // generatePrompt(data) → массив из 3 штук
 
-        // Обновляем план с ID платежа
-        await db.update(plans).set({
-          yookassa_payment_id: payment.id,
-          yookassa_status: payment.status
-        }).where(eq(plans.id, id));
+        const buffers = [];
 
-        // === ФОН: начинаем генерацию ===
-        (async () => {
-          try {
-            const prompt = data.formname === 'form1'
-                ? generatePromptForm1(data)
-                : generatePrompt(data);
+        for (const prompt of prompts) {
+          const documentId = uuidv4();
+          const response = await generatePlanTilda(prompt);
+          const clean = preprocessText(response);
 
-            const response = await generatePlanTilda(prompt);
-            const clean = preprocessText(response);
-            const structure = [
-              "1. Краткое резюме",
-              "2. Описание целей и задач проекта",
-              "3. Анализ рыночной ниши",
-              "4. Информация о проекте",
-              "5. Описание продукта/услуги",
-              "6. Производственный план",
-              "7. Маркетинговый план",
-              "8. Финансовый план",
-              "9. Анализ возможных рисков"
-            ];
+          const structure = [
+            '1. Краткое резюме',
+            '2. Описание целей и задач проекта',
+            '3. Анализ рыночной ниши',
+            '4. Информация о проекте',
+            '5. Описание продукта/услуги',
+            '6. Производственный план',
+            '7. Маркетинговый план',
+            '8. Финансовый план',
+            '9. Анализ возможных рисков'
+          ];
 
-            const fullDocx = await generateWord(clean, null, structure);
-            await sendToAdminsOnly(fullDocx, data.email);
+          const fullDocx = await generateWord(clean, null, structure);
+          buffers.push(fullDocx);
 
-            await db.update(plans).set({
-              gpt_prompt: prompt,
-              gpt_response: response,
-              status: 'completed',
-              updated_at: new Date()
-            }).where(eq(plans.id, id));
-          } catch (err) {
-            console.error('❌ Ошибка генерации в фоне:', err);
-            await db.update(plans).set({status: 'error'}).where(eq(plans.id, id));
-          }
-        })();
+          await db.insert(documents).values({
+            id: documentId,
+            order_id: orderId,
+            doc_type: 'business_plan',
+            gpt_prompt: prompt,
+            gpt_response: response,
+            status: 'completed'
+          });
+        }
 
-        return res.json({confirmation_url: payment.confirmation.confirmation_url});
+        await sendToAdminsOnly(buffers, data.email);
 
+        await db.update(orders).set({
+          status: 'completed',
+          updated_at: new Date()
+        }).where(eq(orders.id, orderId));
 
       } catch (err) {
-        console.error('❌ Ошибка обработки формы от Tilda:', err);
-        return res.status(500).json({error: 'Ошибка сервера'});
+        console.error('❌ Ошибка генерации в фоне:', err);
+        await db.update(orders).set({ status: 'error' }).where(eq(orders.id, orderId));
       }
-    }
-);
+    })();
+
+    return res.json({ confirmation_url: payment.confirmation.confirmation_url });
+
+  } catch (err) {
+    console.error('❌ Ошибка обработки формы от Tilda:', err);
+    await db.update(orders).set({ status: 'error' }).where(eq(orders.id, orderId));
+    return res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+
 
 app.get('/payment-success', async (req, res) => {
   const { id } = req.query;
