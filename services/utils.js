@@ -39,16 +39,16 @@ function buildIdeasPrompt(data) {
 ---
 
 Данные заказчика: 
-- Регион или город: ${region}
-- Собственные средства: ${investment} 
-- Дополнительные пожелания: ${wishes}
+- Регион или город: ${location}
+- Собственные средства: ${ownInvestment} 
+- Дополнительные пожелания: ${additionalInfo}
 
 Требования:  
 - 3 идеи из разных сфер. 
 - Язык: максимально простой, без терминов.`;
 }
 
-function buildPlanPrompt(data, ideaText, index) {
+function buildPlanPrompt(data, ideaText) {
   const fullName = data.fullName || 'Не указано';
   const location = data.location || 'Не указано';
   const additionalInfo = data.additionalInfo || 'Не указано';
