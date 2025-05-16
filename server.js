@@ -188,7 +188,7 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
 
         const prompts = isForm1
           ? [generatePromptForm1(data)]
-          : generatePromptForm2(data); // form2 → массив из 3-х
+          : await generatePromptForm2(data); // form2 → массив из 3-х
 
         const buffers = [];
 
