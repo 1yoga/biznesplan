@@ -1,0 +1,68 @@
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const rec = document.querySelector('#rec1029493506'); // ID блока Tilda
+    if (!rec) return;
+
+    const form = rec.querySelector('form');
+    const button = rec.querySelector('button.t-submit');
+    if (!form || !button) return;
+
+    // Отключаем встроенные действия Tilda
+    form.setAttribute('data-formactiontype', '0');
+    form.removeAttribute('action');
+    form.removeAttribute('target');
+
+    button.addEventListener('click', async function (e) {
+      e.preventDefault();
+      e.stopImmediatePropagation(); // 🔒 Останавливает ВСЕ другие слушатели Tilda
+
+      // 1. Проверка обязательных полей вручную
+      const email = form.querySelector('input[name="email"]');
+      const location = form.querySelector('input[name="location"]');
+
+      if (!email || !location || email.value.trim() === '' || location.value.trim() === '') {
+        if (email.value.trim() === '') email.reportValidity();
+        else location.reportValidity();
+        return;
+      }
+
+      // 2. Визуальное ожидание
+      button.disabled = true;
+      const originalText = button.textContent;
+      button.textContent = '⏳ Генерация...';
+
+      // 3. Подготовка данных
+      const payload = {
+        email: email.value.trim(),
+        fullName: form.querySelector('input[name="fullName"]')?.value.trim() || '',
+        location: location.value.trim(),
+        wishes: form.querySelector('textarea[name="additionalInfo"]')?.value.trim() || '',
+        ownInvestments: form.querySelector('input[name="ownInvestment"]')?.value || '0',
+        formname: 'form2'
+      };
+
+      // 4. Отправка на backend
+      try {
+        const res = await fetch('https://gpt-plan-api-production.up.railway.app/tilda-submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(payload).toString()
+        });
+
+        const result = await res.json();
+
+        if (!res.ok || !result.confirmation_url) {
+          throw new Error(result?.error || 'Ошибка генерации');
+        }
+
+        window.location.href = result.confirmation_url;
+
+      } catch (err) {
+        console.error('❌ Ошибка отправки:', err);
+        alert('Произошла ошибка. Попробуйте позже.');
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    });
+  });
+</script>
