@@ -121,66 +121,110 @@ app.post('/submit-and-pay', async (req, res) => {
 });
 
 app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, res) => {
-  try {
-    const data = req.body;
+      const data = req.body;
 
-    console.log('📥 Получены данные формы от Tilda:', data);
+      console.log('📥 Получены данные формы от Tilda:', data);
 
-    if (!data.email) {
-      return res.status(400).json({ error: 'Не указан email' });
-    }
-
-    const id = uuidv4();
-
-    await db.insert(plans).values({
-      id,
-      email: data.email,
-      form_data: data,
-      status: 'pending'
-    });
-
-    const prompt = data.formname === 'form1'
-      ? generatePromptForm1(data)
-      : generatePrompt(data);
-
-    (async () => {
-      try {
-        const response = await generatePlanTilda(prompt);
-        const clean = preprocessText(response);
-        const supportType = data?.supportType;
-        const structure = [
-    "1. Краткое резюме",
-    "2. Описание целей и задач проекта",
-    "3. Анализ рыночной ниши",
-    "4. Информация о проекте",
-    "5. Описание продукта/услуги",
-    "6. Производственный план",
-    "7. Маркетинговый план",
-    "8. Финансовый план",
-    "9. Анализ возможных рисков"
-  ];
-
-        const fullDocx = await generateWord(clean, null, structure);
-        await sendToAdminsOnly(fullDocx, data.email);
-
-        await db.update(plans).set({
-          gpt_prompt: prompt,
-          gpt_response: response,
-          status: 'completed',
-          updated_at: new Date()
-        }).where(eq(plans.id, id));
-      } catch (err) {
-        console.error('❌ Ошибка генерации для Tilda:', err);
-        await db.update(plans).set({ status: 'error' }).where(eq(plans.id, id));
+      if (!data.email) {
+        return res.status(400).json({error: 'Не указан email'});
       }
-    })();
 
-    res.status(200).json({ success: true, message: 'Форма успешно принята. Проверьте почту после оплаты.' });
-  } catch (err) {
-    console.error('❌ Ошибка обработки формы от Tilda:', err);
-    res.status(500).json({ error: 'Ошибка сервера' });
-  }
-});
+      if (data.formname !== 'form1' && data.formname !== 'form2') {
+        return res.status(400).json({error: 'Не корректный formname'});
+      }
+
+      const isFrom1 = data.formname === 'form1';
+
+      const id = uuidv4();
+
+      await db.insert(plans).values({
+        id,
+        email: data.email,
+        form_data: data,
+        status: 'pending'
+      });
+
+      try {
+        // === СНАЧАЛА создаём платёж ===
+        const payment = await yookassa.createPayment({
+          amount: {
+            value: isFrom1 ? process.env.FORM1_PRICE : process.env.FORM2_PRICE,
+            currency: 'RUB',
+          },
+          confirmation: {
+            type: 'redirect',
+            return_url: `https://biznesplan.online/payment-success?id=${id}`,
+          },
+          capture: true,
+          description: `Оплата бизнес-плана для ${data.email}`,
+          metadata: {planId: id},
+          receipt: {
+            customer: {email: data.email},
+            items: [{
+              description: "Бизнес-план",
+              quantity: 1,
+              amount: {
+                value: isFrom1 ? process.env.FORM1_PRICE : process.env.FORM2_PRICE,
+                currency: 'RUB'
+              },
+              vat_code: 1,
+              payment_mode: 'full_payment',
+              payment_subject: 'service'
+            }]
+          }
+        });
+
+        // Обновляем план с ID платежа
+        await db.update(plans).set({
+          yookassa_payment_id: payment.id,
+          yookassa_status: payment.status
+        }).where(eq(plans.id, id));
+
+        // === ФОН: начинаем генерацию ===
+        (async () => {
+          try {
+            const prompt = data.formname === 'form1'
+                ? generatePromptForm1(data)
+                : generatePrompt(data);
+
+            const response = await generatePlanTilda(prompt);
+            const clean = preprocessText(response);
+            const structure = [
+              "1. Краткое резюме",
+              "2. Описание целей и задач проекта",
+              "3. Анализ рыночной ниши",
+              "4. Информация о проекте",
+              "5. Описание продукта/услуги",
+              "6. Производственный план",
+              "7. Маркетинговый план",
+              "8. Финансовый план",
+              "9. Анализ возможных рисков"
+            ];
+
+            const fullDocx = await generateWord(clean, null, structure);
+            await sendToAdminsOnly(fullDocx, data.email);
+
+            await db.update(plans).set({
+              gpt_prompt: prompt,
+              gpt_response: response,
+              status: 'completed',
+              updated_at: new Date()
+            }).where(eq(plans.id, id));
+          } catch (err) {
+            console.error('❌ Ошибка генерации в фоне:', err);
+            await db.update(plans).set({status: 'error'}).where(eq(plans.id, id));
+          }
+        })();
+
+        return res.json({confirmation_url: payment.confirmation.confirmation_url});
+
+
+      } catch (err) {
+        console.error('❌ Ошибка обработки формы от Tilda:', err);
+        return res.status(500).json({error: 'Ошибка сервера'});
+      }
+    }
+);
 
 app.get('/payment-success', async (req, res) => {
   const { id } = req.query;
