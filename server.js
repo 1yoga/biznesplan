@@ -148,7 +148,17 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
         const response = await generatePlanTilda(prompt);
         const clean = preprocessText(response);
         const supportType = data?.supportType;
-        const structure = STRUCTURES[supportType] || STRUCTURES.default;
+        const structure = [
+    "1. Краткое резюме",
+    "2. Описание целей и задач проекта",
+    "3. Анализ рыночной ниши",
+    "4. Информация о проекте",
+    "5. Описание продукта/услуги",
+    "6. Производственный план",
+    "7. Маркетинговый план",
+    "8. Финансовый план",
+    "9. Анализ возможных рисков"
+  ];
 
         const fullDocx = await generateWord(clean, null, structure);
         await sendToAdminsOnly(fullDocx, data.email);
