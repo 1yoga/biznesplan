@@ -6,6 +6,6 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-const db = drizzle(pool, { schema: { plans } });
+const db = drizzle(pool, { schema: { plans, orders, documents  } });
 
 module.exports = { db, plans, orders, documents };
