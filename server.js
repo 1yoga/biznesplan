@@ -125,17 +125,20 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
   console.log('📥 Получены данные формы от Tilda:', data);
 
   if (!data.email) {
+    console.warn('❌ Нет email в данных формы');
     return res.status(400).json({ error: 'Не указан email' });
   }
 
   if (data.formname !== 'form1' && data.formname !== 'form2') {
+    console.warn('❌ Некорректный formname:', data.formname);
     return res.status(400).json({ error: 'Некорректный formname' });
   }
 
   const isForm1 = data.formname === 'form1';
   const orderId = uuidv4();
 
-  // Создаём заказ
+  console.log('📝 Создаём заказ с ID:', orderId);
+
   await db.insert(orders).values({
     id: orderId,
     email: data.email,
@@ -145,13 +148,11 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
   });
 
   try {
-    // Создаём платёж
     const amount = isForm1 ? process.env.FORM1_PRICE : process.env.FORM2_PRICE;
+    console.log('💳 Сумма платежа:', amount);
+
     const payment = await yookassa.createPayment({
-      amount: {
-        value: amount,
-        currency: 'RUB',
-      },
+      amount: { value: amount, currency: 'RUB' },
       confirmation: {
         type: 'redirect',
         return_url: `https://biznesplan.online/payment-success?id=${orderId}`,
@@ -161,39 +162,40 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
       metadata: { planId: orderId },
       receipt: {
         customer: { email: data.email },
-        items: [
-          {
-            description: 'Бизнес-план',
-            quantity: 1,
-            amount: {
-              value: amount,
-              currency: 'RUB'
-            },
-            vat_code: 1,
-            payment_mode: 'full_payment',
-            payment_subject: 'service'
-          }
-        ]
+        items: [{
+          description: 'Бизнес-план',
+          quantity: 1,
+          amount: { value: amount, currency: 'RUB' },
+          vat_code: 1,
+          payment_mode: 'full_payment',
+          payment_subject: 'service'
+        }]
       }
     });
 
-    // Обновляем заказ
+    console.log('✅ Платёж успешно создан:', payment.id);
+
     await db.update(orders).set({
       yookassa_payment_id: payment.id,
       yookassa_status: payment.status
     }).where(eq(orders.id, orderId));
 
-    // Фоновая генерация бизнес-планов
+    // Фон: генерация планов
     (async () => {
       try {
+        console.log('⚙️ Начинаем генерацию бизнес-планов...');
+
         const prompts = isForm1
           ? [generatePromptForm1(data)]
-          : generatePrompt(data); // generatePrompt(data) → массив из 3 штук
+          : generatePrompt(data); // form2 → массив из 3-х
 
         const buffers = [];
 
-        for (const prompt of prompts) {
+        for (let i = 0; i < prompts.length; i++) {
+          const prompt = prompts[i];
           const documentId = uuidv4();
+          console.log(`🧠 Генерация GPT для документа ${i + 1} / ${prompts.length}`);
+
           const response = await generatePlanTilda(prompt);
           const clean = preprocessText(response);
 
@@ -220,17 +222,23 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
             gpt_response: response,
             status: 'completed'
           });
+
+          console.log(`✅ Документ ${i + 1} успешно создан и записан в базу`);
         }
 
+        console.log('📨 Отправляем все бизнес-планы администраторам...');
         await sendToAdminsOnly(buffers, data.email);
+        console.log('✅ Все планы отправлены администраторам');
 
         await db.update(orders).set({
           status: 'completed',
           updated_at: new Date()
         }).where(eq(orders.id, orderId));
 
+        console.log('📦 Статус заказа обновлён на "completed"');
+
       } catch (err) {
-        console.error('❌ Ошибка генерации в фоне:', err);
+        console.error('❌ Ошибка генерации бизнес-планов в фоне:', err);
         await db.update(orders).set({ status: 'error' }).where(eq(orders.id, orderId));
       }
     })();
@@ -238,11 +246,12 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
     return res.json({ confirmation_url: payment.confirmation.confirmation_url });
 
   } catch (err) {
-    console.error('❌ Ошибка обработки формы от Tilda:', err);
+    console.error('❌ Ошибка создания оплаты или записи заказа:', err);
     await db.update(orders).set({ status: 'error' }).where(eq(orders.id, orderId));
     return res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
+
 
 
 
