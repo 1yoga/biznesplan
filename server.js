@@ -331,7 +331,6 @@ function preprocessText(text) {
       const trimmed = line.trim();
       if (!trimmed) return '';
       if (/^\d+\.\s+/.test(trimmed)) return `### ${trimmed}`;
-      if (/^[А-ЯA-Z][^:]+:$/.test(trimmed)) return `**${trimmed}**`;
       return trimmed;
     })
     .join('\n')
