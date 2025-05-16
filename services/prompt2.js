@@ -1,4 +1,4 @@
-module.exports = function generatePromptForm2(data) {
+module.exports = function generatePrompt2(data) {
   const email = data.email || 'не указан';
   const location = data['location'] || 'не указан';
   const name = data['name'] || 'не указано';

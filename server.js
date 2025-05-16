@@ -8,7 +8,9 @@ const { v4: uuidv4 } = require('uuid');
 const generatePlan = require('./services/openai');
 const generateWord = require('./services/word');
 const generatePrompt = require('./services/prompt');
-const generatePromptForm2 = require('./services/prompt2');
+const generatePrompt2 = require('./services/prompt2');
+const generatePromptForm1 = require('./services/tilda/promptForm1');
+const generatePlanTilda = require('./services/tilda/openai');
 const { STRUCTURES } = require('./services/consts');
 
 const YooKassa = require('yookassa');
@@ -85,7 +87,7 @@ app.post('/submit-and-pay', async (req, res) => {
     (async () => {
       try {
         const prompt = formType === 'form2'
-          ? generatePromptForm2(data)
+          ? generatePrompt2(data)
           : generatePrompt(data);
 
         const response = await generatePlan(prompt);
@@ -137,13 +139,13 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
       status: 'pending'
     });
 
-    const prompt = data.formType === 'form2'
-      ? generatePromptForm2(data)
+    const prompt = data.formname === 'form1'
+      ? generatePromptForm1(data)
       : generatePrompt(data);
 
     (async () => {
       try {
-        const response = await generatePlan(prompt);
+        const response = await generatePlanTilda(prompt);
         const clean = preprocessText(response);
         const supportType = data?.supportType;
         const structure = STRUCTURES[supportType] || STRUCTURES.default;
@@ -169,7 +171,6 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
-
 
 app.get('/payment-success', async (req, res) => {
   const { id } = req.query;
