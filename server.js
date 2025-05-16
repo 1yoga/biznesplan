@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { db, plans } = require('./db');
+const { db, plans, orders, documents } = require('./db');
 const { eq } = require('drizzle-orm');
 const { v4: uuidv4 } = require('uuid');
 
