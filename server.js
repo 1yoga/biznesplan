@@ -143,9 +143,6 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
         form_data: data,
         status: 'pending'
       });
-      
-      console.log(process.env.FORM1_PRICE)
-      console.log(process.env.FORM2_PRICE)
 
       try {
         // === СНАЧАЛА создаём платёж ===
