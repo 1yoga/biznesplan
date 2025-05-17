@@ -162,7 +162,7 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
       },
       capture: true,
       description: `Оплата бизнес-плана для ${data.email}`,
-      metadata: { planId: orderId },
+      metadata: { orderId: orderId },
       receipt: {
         customer: { email: data.email },
         items: [{
@@ -254,6 +254,41 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
     return res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
+
+app.post('/yookassa-webhook-tilda', express.json(), async (req, res) => {
+  try {
+    const body = req.body;
+    console.log(body)
+
+    if (body.event !== 'payment.succeeded') return res.sendStatus(200);
+
+    const payment = body.object;
+    const orderId = payment.metadata?.orderId;
+
+    if (!orderId) return res.status(400).send('❌ Нет orderId в metadata');
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    if (!order) {
+      console.warn(`❌ Заказ не найден по ID: ${orderId}`);
+      return res.sendStatus(404);
+    }
+
+    if (order.yookassa_status === 'succeeded') return res.sendStatus(200);
+
+    await db.update(orders).set({
+      yookassa_status: 'succeeded',
+      updated_at: new Date()
+    }).where(eq(orders.id, orderId));
+
+    console.log(`✅ Оплата по заказу ${orderId} подтверждена`);
+
+    return res.sendStatus(200);
+  } catch (err) {
+    console.error('❌ Ошибка в /yookassa-webhook:', err);
+    return res.sendStatus(500);
+  }
+});
+
 
 app.get('/payment-success', async (req, res) => {
   const { id } = req.query;
