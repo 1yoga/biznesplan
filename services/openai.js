@@ -14,6 +14,5 @@ module.exports = async function generatePlan(prompt) {
       { role: 'user', content: prompt }
     ]
   })
-console.log(completion.choices?.[0]?.message?.content)
   return completion.choices?.[0]?.message?.content || 'Ошибка генерации'
 }
