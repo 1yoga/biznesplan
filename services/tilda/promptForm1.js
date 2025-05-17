@@ -6,11 +6,11 @@ module.exports = function generatePromptForm1(data) {
 
     if (data.fullName) parts.push(`- ФИО заказчика: ${data.fullName}`);
     if (data.location) parts.push(`- Город или регион: ${data.location}`);
-    if (data.ownInvestments) parts.push(`- Вложения в бизнес: ${data.ownInvestments} руб.`);
+    if (data.ownInvestment) parts.push(`- Вложения в бизнес: ${data.ownInvestment} руб.`);
     if (data.assetsDescription) parts.push(`- Неденежные активы: ${data.assetsDescription}`);
     if (data.businessIdea) parts.push(`-Описание идеи: ${data.businessIdea}`);
     if (data.advantages) parts.push(`- Конкурентные преимущества: ${data.advantages}`);
-    if (data.impactDescription) parts.push(`- Как бизнес улучшит материальное положение заказчика: ${data.impactDescription}`);
+    if (data.impactDescription) parts.push(`- Как бизнес улучшит материальное положение заказчика: ${data.lifeImprovement}`);
     if (data.additionalInfo) parts.push(`- Дополнительные пожелания: ${data.additionalInfo}`);
 
     return `
