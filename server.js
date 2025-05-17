@@ -124,14 +124,20 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
 }
 
 async function startSectionGeneration({ documentId, orderId, email, basePrompt, systemPrompt }) {
-  const sectionsToInsert = sectionTitles.map((s, idx) => ({
-    id: uuidv4(),
-    document_id: documentId,
-    index: idx + 1,
-    title: s.title,
-    prompt: `${basePrompt}\n\n✏️ Напиши только раздел **«${s.title}»** (объем: около ${s.target_word_count} слов).`,
-    status: 'pending'
-  }));
+  const sectionsToInsert = sectionTitles.map((s, idx) => {
+    const prompt = idx === 0
+      ? `${basePrompt}\n\n✏️ Напиши только раздел ${idx + 1} **«${s.title}»** (объем: около ${s.target_word_count} слов), начни свой ответ с # ${idx + 1}. ${s.title}`
+      : `✏️ Напиши только раздел ${idx + 1} **«${s.title}»** (объем: около ${s.target_word_count} слов).`;
+
+    return {
+      id: uuidv4(),
+      document_id: documentId,
+      index: idx + 1,
+      title: s.title,
+      prompt,
+      status: 'pending'
+    };
+  });
 
   await db.insert(sections).values(sectionsToInsert);
 
@@ -179,7 +185,7 @@ async function startSectionGeneration({ documentId, orderId, email, basePrompt, 
     .orderBy(sections.index);
 
   const fullText = readySections
-    .map(s => `## ${s.title}\n\n${s.gpt_response}`)
+    .map(s => s.gpt_response)
     .join('\n\n');
 
   const clean = preprocessText(fullText);
