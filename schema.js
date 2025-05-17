@@ -45,4 +45,16 @@ const documents = pgTable('documents', {
   updated_at: timestamp('updated_at').defaultNow(),
 });
 
-module.exports = { plans, orders, documents };
+const sections = pgTable('sections', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  document_id: uuid('document_id').notNull().references(() => documents.id),
+  index: integer('index').notNull(), // порядок раздела: 1, 2, 3...
+  title: text('title').notNull(), // например: "Краткое резюме"
+  prompt: text('prompt').notNull(), // промпт, переданный GPT
+  gpt_response: text('gpt_response'),
+  status: text('status').notNull().default('pending'), // pending | completed | error
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
+module.exports = { plans, orders, documents, sections };
