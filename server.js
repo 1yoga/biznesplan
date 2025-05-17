@@ -47,6 +47,11 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
     return res.status(400).json({ error: 'Не указан email' });
   }
 
+  if (!data.source_url) {
+    console.warn('❌ Нет source_url в данных формы');
+    return res.status(400).json({ error: 'Не указан source_url' });
+  }
+
   if (data.formname !== 'form1' && data.formname !== 'form2') {
     console.warn('❌ Некорректный formname:', data.formname);
     return res.status(400).json({ error: 'Некорректный formname' });
@@ -120,6 +125,21 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
       basePrompt: prompt,
       systemPrompt
     });
+
+    // 🧩 Проверяем, все ли документы по заказу готовы
+    const orderDocs = await db.select().from(documents).where(eq(documents.order_id, orderId));
+    const docsArray = Array.isArray(orderDocs) ? orderDocs : [];
+
+    const allDocsCompleted = docsArray.length > 0 && docsArray.every(doc => doc.status === 'completed');
+
+    if (allDocsCompleted) {
+      await db.update(orders).set({
+        status: 'completed',
+        updated_at: new Date()
+      }).where(eq(orders.id, orderId));
+
+      console.log(`📦 Все документы сгенерированы. Статус заказа ${orderId} → 'completed'`);
+    }
   }
 }
 
@@ -145,6 +165,7 @@ async function startSectionGeneration({ documentId, orderId, email, basePrompt, 
 
   for (const section of sectionsToInsert) {
     try {
+      await delay(25_000);
       messages.push({ role: 'user', content: section.prompt });
 
       const result = await openai.chat.completions.create({
@@ -186,8 +207,6 @@ async function startSectionGeneration({ documentId, orderId, email, basePrompt, 
   const fullText = readySections
     .map(s => s.gpt_response)
     .join('\n\n');
-
-
 
   await db.update(documents).set({
     gpt_response: fullText,
@@ -354,7 +373,7 @@ async function safeSendFull(docx, email, retries = 3, delayMs = 3000) {
   return false;
 }
 
-async function trySendTildaOrderById(orderId, retries = 30, intervalMs = 10000) {
+async function trySendTildaOrderById(orderId, retries = 30, intervalMs = 30000) {
   for (let i = 0; i < retries; i++) {
     const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
     if (!order) {
@@ -569,6 +588,10 @@ app.post('/yookassa-webhook', express.json(), async (req, res) => {
     res.sendStatus(500);
   }
 });
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 async function trySendPlanById(planId, retries = 30, intervalMs = 10000) {
   for (let i = 0; i < retries; i++) {

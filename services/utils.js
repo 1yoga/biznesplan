@@ -129,7 +129,9 @@ function preprocessText(text) {
     .map(line => {
       const trimmed = line.trim();
       if (!trimmed) return '';
-      if (/^\d+\.\s+/.test(trimmed)) return `### ${trimmed}`;
+      if (/^\d+\.\s+/.test(trimmed) && !/\*\*/.test(trimmed)) {
+        return `### ${trimmed}`;
+      }
       return trimmed;
     })
     .join('\n')

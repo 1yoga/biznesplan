@@ -216,33 +216,34 @@ function processTextToParagraphs(text, sectionLimit = null) {
         );
       }
     } else if (/^(\d+)\.\s+(.*)/.test(trimmed)) {
-          const [, num, content] = trimmed.match(/^(\d+)\.\s+(.*)/);
+        const [, num, content] = trimmed.match(/^(\d+)\.\s+(.*)/);
 
-          const parts = [];
-          const regex = /\*\*(.+?)\*\*/g;
-          let lastIndex = 0;
-          let match;
+        const parts = [new TextRun({ text: `${num}. `, size: 28 })];
 
-          while ((match = regex.exec(content)) !== null) {
-            if (match.index > lastIndex) {
-              parts.push(new TextRun({ text: content.slice(lastIndex, match.index), size: 28 }));
-            }
-            parts.push(new TextRun({ text: match[1], bold: true, size: 28 }));
-            lastIndex = regex.lastIndex;
+        const regex = /\*\*(.+?)\*\*/g;
+        let lastIndex = 0;
+        let match;
+
+        while ((match = regex.exec(content)) !== null) {
+          if (match.index > lastIndex) {
+            parts.push(new TextRun({ text: content.slice(lastIndex, match.index), size: 28 }));
           }
+          parts.push(new TextRun({ text: match[1], bold: true, size: 28 }));
+          lastIndex = regex.lastIndex;
+        }
 
-          if (lastIndex < content.length) {
-            parts.push(new TextRun({ text: content.slice(lastIndex), size: 28 }));
-          }
+        if (lastIndex < content.length) {
+          parts.push(new TextRun({ text: content.slice(lastIndex), size: 28 }));
+        }
 
-          paragraphs.push(
-            new Paragraph({
-              children: parts,
-              numbering: { reference: "numbered-list", level: 0 },
-              spacing: { line: 276 },
-            })
-          );
-        } else {
+        paragraphs.push(
+          new Paragraph({
+            children: parts,
+            numbering: { reference: "numbered-list", level: 0 },
+            spacing: { line: 276 },
+          })
+        );
+      } else {
       const parts = [];
       const regex = /\*\*(.+?)\*\*/g;
       let lastIndex = 0;
