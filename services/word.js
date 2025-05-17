@@ -80,20 +80,24 @@ function generateTitlePage() {
 function generateContentsPage(structure) {
   return [
     new Paragraph({
-      text: "Содержание",
       heading: HeadingLevel.HEADING_1,
       spacing: { after: 400 },
-      children: [new TextRun({ text: "Содержание", bold: true, size: 32 })]
+      children: [
+        new TextRun({ text: "Содержание", bold: true, size: 32 }),
+      ],
     }),
     ...structure.map(title =>
       new Paragraph({
-        bullet: { level: 0 },
+        indent: { left: 709 },
         spacing: { line: 276 },
-        children: [new TextRun({ text: title, size: 28 })],
+        children: [
+          new TextRun({ text: title, size: 28 }),
+        ],
       })
     ),
   ];
 }
+
 
 
 function processTextToParagraphs(text, sectionLimit = null) {
