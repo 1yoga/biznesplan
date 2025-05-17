@@ -83,12 +83,15 @@ function generateContentsPage(structure) {
       text: "Содержание",
       heading: HeadingLevel.HEADING_1,
       spacing: { after: 400 },
+      children: [new TextRun({ text: "Содержание", bold: true, size: 32 })]
     }),
-    ...structure.map(title => new Paragraph({
-      text: title,
-      bullet: { level: 0 },
-      spacing: { line: 276 },
-    })),
+    ...structure.map(title =>
+      new Paragraph({
+        bullet: { level: 0 },
+        spacing: { line: 276 },
+        children: [new TextRun({ text: title, size: 28 })],
+      })
+    ),
   ];
 }
 
