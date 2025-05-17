@@ -198,7 +198,7 @@ async function startSectionGeneration({ documentId, orderId, email, basePrompt, 
 
   const buffers = await generateTildaBuffers(orderId);
   console.log('📨 Отправляем все бизнес-планы администраторам...');
-  await sendToAdminsOnly(buffers, data.email);
+  await sendToAdminsOnly(buffers, email);
   console.log('✅ Все планы отправлены администраторам');
 }
 
