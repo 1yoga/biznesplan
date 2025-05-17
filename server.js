@@ -216,14 +216,14 @@ async function trySendTildaOrderById(orderId, retries = 30, intervalMs = 10000) 
 
 async function generateTildaBuffers(orderId) {
   const docs = await db.select().from(documents).where(eq(documents.order_id, orderId));
-  const buffers = [];
-
-  for (const doc of docs) {
-    if (doc.status !== 'completed' || !doc.gpt_response) continue;
-    const clean = preprocessText(doc.gpt_response);
-    const docx = await generateWord(clean, null, TILDA_STRUCTURE);
-    buffers.push(docx);
-  }
+  const buffers = await Promise.all(
+    docs
+      .filter(doc => doc.status === 'completed' && doc.gpt_response)
+      .map(async doc => {
+        const clean = preprocessText(doc.gpt_response);
+        return await generateWord(clean, null, TILDA_STRUCTURE);
+      })
+  );
 
   if (buffers.length === 0) {
     console.warn(`⚠️ Нет готовых документов в generateTildaBuffers для orderId: ${orderId}`);
