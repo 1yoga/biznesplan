@@ -431,5 +431,6 @@ async function trySendPlanById(planId, retries = 30, intervalMs = 10000) {
   console.warn(`⚠️ План ${planId} так и не был сгенерирован после ${retries} попыток`);
 }
 
+
 const PORT = process.env.PORT || 3003;
 app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
