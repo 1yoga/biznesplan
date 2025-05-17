@@ -148,6 +148,8 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
     status: 'pending'
   });
 
+  const returnUrl = `${data.source_url || 'https://biznesplan.online'}`;
+
   try {
     const amount = isForm1 ? process.env.FORM1_PRICE : process.env.FORM2_PRICE;
     console.log('💳 Сумма платежа:', amount);
@@ -156,7 +158,7 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
       amount: { value: amount, currency: 'RUB' },
       confirmation: {
         type: 'redirect',
-        return_url: `https://biznesplan.online/payment-success?id=${orderId}`,
+        return_url: returnUrl,
       },
       capture: true,
       description: `Оплата бизнес-плана для ${data.email}`,
