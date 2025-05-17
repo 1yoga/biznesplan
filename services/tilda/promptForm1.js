@@ -7,10 +7,10 @@ module.exports = function generatePromptForm1(data) {
     if (data.fullName) parts.push(`- ФИО заказчика: ${data.fullName}`);
     if (data.location) parts.push(`- Город или регион: ${data.location}`);
     if (data.ownInvestment) parts.push(`- Вложения в бизнес: ${data.ownInvestment} руб.`);
-    //if (data.assetsDescription) parts.push(`- Неденежные активы: ${data.ownAssets}`);
+    if (data.assetsDescription) parts.push(`- Неденежные активы: ${data.assetsDescription}`);
     if (data.businessIdea) parts.push(`-Описание идеи: ${data.businessIdea}`);
     if (data.advantages) parts.push(`- Конкурентные преимущества: ${data.advantages}`);
-    if (data.impactDescription) parts.push(`- Как бизнес улучшить материальное положение заказчика: ${data.lifeImprovement}`);
+    if (data.impactDescription) parts.push(`- Как бизнес улучшит материальное положение заказчика: ${data.lifeImprovement}`);
     if (data.additionalInfo) parts.push(`- Дополнительные пожелания: ${data.additionalInfo}`);
 
     return `
@@ -34,6 +34,7 @@ module.exports = function generatePromptForm1(data) {
 ### 8.2.1. Постоянные расходы
 ### 8.2.2. Переменные расходы
 ## 8.3. Форма налогообложения
+### 8.3.1. Расчёт налогов (нужны математические действия)
 ## 8.4. Ожидаемые доходы
 ## 8.5. Окупаемость
 # 9. Анализ возможных рисков (400–500 слов)
