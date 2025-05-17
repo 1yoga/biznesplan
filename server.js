@@ -38,7 +38,7 @@ app.use(cors({
 app.use(express.json());
 
 
-app.post('/tilda-submit-by-sections', express.urlencoded({ extended: true }), async (req, res) => {
+app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, res) => {
   const data = req.body;
   console.log('📥 Получены данные формы от Tilda:', data);
 
@@ -188,8 +188,7 @@ async function startSectionGeneration({ documentId, orderId, email, basePrompt, 
     .map(s => s.gpt_response)
     .join('\n\n');
 
-  const clean = preprocessText(fullText);
-  const docxBuffer = await generateWord(clean, null, TILDA_STRUCTURE);
+
 
   await db.update(documents).set({
     gpt_response: fullText,
@@ -197,16 +196,14 @@ async function startSectionGeneration({ documentId, orderId, email, basePrompt, 
     updated_at: new Date()
   }).where(eq(documents.id, documentId));
 
-  const sent = await safeSendFull(docxBuffer, email);
-  if (sent) {
-    console.log(`📨 Документ отправлен клиенту по заказу ${orderId}`);
-  } else {
-    console.warn(`⚠️ Не удалось отправить письмо по документу ${documentId}`);
-  }
+  const buffers = await generateTildaBuffers(orderId);
+  console.log('📨 Отправляем все бизнес-планы администраторам...');
+  await sendToAdminsOnly(buffers, data.email);
+  console.log('✅ Все планы отправлены администраторам');
 }
 
 
-app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, res) => {
+app.post('/tilda-submit-old', express.urlencoded({ extended: true }), async (req, res) => {
   const data = req.body;
   console.log('📥 Получены данные формы от Tilda:', data);
 
