@@ -153,9 +153,13 @@ app.post('/yookassa-webhook-tilda', express.json(), async (req, res) => {
 
     if (order.yookassa_status === 'succeeded') return res.sendStatus(200);
 
+    const now = new Date();
+
     await db.update(orders).set({
       yookassa_status: 'succeeded',
-      updated_at: new Date()
+      is_paid: true,
+      paid_at: now,
+      updated_at: now,
     }).where(eq(orders.id, orderId));
 
     console.log(`✅ Оплата по заказу ${orderId} подтверждена`);
