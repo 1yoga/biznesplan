@@ -155,7 +155,6 @@ async function startSectionGeneration({ documentId, orderId, email, basePrompt, 
       });
 
       const response = result.choices?.[0]?.message?.content || 'Ошибка генерации';
-      console.log(response)
       const wordCount = response.split(/\s+/).filter(Boolean).length;
 
       messages.push({ role: 'assistant', content: response });
