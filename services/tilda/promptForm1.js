@@ -10,7 +10,7 @@ module.exports = function generatePromptForm1(data) {
     if (data.assetsDescription) parts.push(`- Неденежные активы: ${data.assetsDescription}`);
     if (data.businessIdea) parts.push(`-Описание идеи: ${data.businessIdea}`);
     if (data.advantages) parts.push(`- Конкурентные преимущества: ${data.advantages}`);
-    if (data.impactDescription) parts.push(`- Как бизнес улучшит материальное положение заказчика: ${data.lifeImprovement}`);
+    if (data.impactDescription) parts.push(`- Как бизнес улучшит материальное положение заказчика: ${data.impactDescription}`);
     if (data.additionalInfo) parts.push(`- Дополнительные пожелания: ${data.additionalInfo}`);
 
     return `
