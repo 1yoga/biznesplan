@@ -12,7 +12,7 @@ const generatePrompt2 = require('./services/prompt2');
 const generatePromptForm1 = require('./services/tilda/promptForm1');
 const generatePromptForm2 = require('./services/tilda/promptForm2');
 const generatePlanTilda = require('./services/tilda/openai');
-const { STRUCTURES } = require('./services/consts');
+const { STRUCTURES, TILDA_STRUCTURE } = require('./services/consts');
 
 const YooKassa = require('yookassa');
 const {sendFull, sendToAdminsOnly} = require("./services/mailer");
@@ -154,27 +154,7 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
     const amount = isForm1 ? process.env.FORM1_PRICE : process.env.FORM2_PRICE;
     console.log('💳 Сумма платежа:', amount);
 
-    const payment = await yookassa.createPayment({
-      amount: { value: amount, currency: 'RUB' },
-      confirmation: {
-        type: 'redirect',
-        return_url: returnUrl,
-      },
-      capture: true,
-      description: `Оплата бизнес-плана для ${data.email}`,
-      metadata: { orderId: orderId },
-      receipt: {
-        customer: { email: data.email },
-        items: [{
-          description: 'Бизнес-план',
-          quantity: 1,
-          amount: { value: amount, currency: 'RUB' },
-          vat_code: 1,
-          payment_mode: 'full_payment',
-          payment_subject: 'service'
-        }]
-      }
-    });
+    const payment = await yookassa.createPayment(buildPaymentParams({ amount, returnUrl, email: data.email, orderId }));
 
     console.log('✅ Платёж успешно создан:', payment.id);
 
@@ -202,19 +182,7 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
           const response = await generatePlanTilda(prompt, data.formname);
           const clean = preprocessText(response);
 
-          const structure = [
-            '1. Краткое резюме',
-            '2. Описание целей и задач проекта',
-            '3. Анализ рыночной ниши',
-            '4. Информация о проекте',
-            '5. Описание продукта/услуги',
-            '6. Производственный план',
-            '7. Маркетинговый план',
-            '8. Финансовый план',
-            '9. Анализ возможных рисков'
-          ];
-
-          const fullDocx = await generateWord(clean, null, structure);
+          const fullDocx = await generateWord(clean, null, TILDA_STRUCTURE);
           buffers.push(fullDocx);
 
           await db.insert(documents).values({
@@ -394,19 +362,8 @@ async function trySendTildaOrderById(orderId, retries = 30, intervalMs = 10000) 
         if (doc.status !== 'completed') continue;
 
         const clean = preprocessText(doc.gpt_response);
-        const structure = [
-          '1. Краткое резюме',
-          '2. Описание целей и задач проекта',
-          '3. Анализ рыночной ниши',
-          '4. Информация о проекте',
-          '5. Описание продукта/услуги',
-          '6. Производственный план',
-          '7. Маркетинговый план',
-          '8. Финансовый план',
-          '9. Анализ возможных рисков'
-        ];
 
-        const docx = await generateWord(clean, null, structure);
+        const docx = await generateWord(clean, null, TILDA_STRUCTURE);
         buffers.push(docx);
       }
 
@@ -495,6 +452,59 @@ function preprocessText(text) {
     })
     .join('\n')
     .replace(/\(\d{2,4}–\d{2,4} слов\)/g, '');
+}
+
+function buildPaymentParams({ amount, returnUrl, email, orderId }) {
+  return {
+    amount: { value: amount, currency: 'RUB' },
+    confirmation: {
+      type: 'redirect',
+      return_url: returnUrl,
+    },
+    capture: true,
+    description: `Оплата бизнес-плана для ${email}`,
+    metadata: { orderId },
+    receipt: {
+      customer: { email },
+      items: [{
+        description: 'Бизнес-план',
+        quantity: 1,
+        amount: { value: amount, currency: 'RUB' },
+        vat_code: 1,
+        payment_mode: 'full_payment',
+        payment_subject: 'service'
+      }]
+    }
+  };
+}
+
+async function generateTildaDocuments(data, orderId) {
+  const isForm1 = data.formname === 'form1';
+  const prompts = isForm1
+    ? [generatePromptForm1(data)]
+    : await generatePromptForm2(data);
+
+  const buffers = [];
+
+  for (let i = 0; i < prompts.length; i++) {
+    const prompt = prompts[i];
+    const response = await generatePlanTilda(prompt, data.formname);
+    const clean = preprocessText(response);
+    const docx = await generateWord(clean, null, TILDA_STRUCTURE);
+
+    buffers.push(docx);
+
+    await db.insert(documents).values({
+      id: uuidv4(),
+      order_id: orderId,
+      doc_type: 'business_plan',
+      gpt_prompt: prompt,
+      gpt_response: response,
+      status: 'completed'
+    });
+  }
+
+  return buffers;
 }
 
 const PORT = process.env.PORT || 3003;

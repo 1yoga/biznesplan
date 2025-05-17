@@ -81,4 +81,16 @@ const systemPromptForm2 = `Ты профессиональный бизнес-к
 Каждую из 3-х  идей распиши на 1200 символов. 
 `
 
-module.exports = { STRUCTURES, systemPromptForm1, systemPromptForm2 };
+const TILDA_STRUCTURE = [
+  '1. Краткое резюме',
+  '2. Описание целей и задач проекта',
+  '3. Анализ рыночной ниши',
+  '4. Информация о проекте',
+  '5. Описание продукта/услуги',
+  '6. Производственный план',
+  '7. Маркетинговый план',
+  '8. Финансовый план',
+  '9. Анализ возможных рисков'
+];
+
+module.exports = { STRUCTURES, systemPromptForm1, systemPromptForm2, TILDA_STRUCTURE };

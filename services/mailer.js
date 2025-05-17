@@ -32,26 +32,27 @@ function createMessage({ to, subject, text, attachments }) {
 }
 
 module.exports = {
-  async sendFull(fullBuffer, email) {
-    console.log('📨 Отправляем бизнес-план...');
-    const transporter = createTransporter();
+  async sendFull(buffersOrSingle, email) {
+    console.log('📨 Отправляем бизнес-план клиенту...');
 
-    const attachments = [
-      {
-        filename: 'FULL-business-plan.docx',
-        content: fullBuffer
-      }
-    ];
+    const buffers = Array.isArray(buffersOrSingle) ? buffersOrSingle : [buffersOrSingle];
+
+    const attachments = buffers.map((buffer, index) => ({
+      filename: `Бизнес-план ${index + 1}.docx`,
+      content: buffer
+    }));
 
     const text = `
-Здравствуйте!
-
-Спасибо за оплату. Во вложении — бизнес-план, подготовленный специально для вас.
-
-Если возникнут вопросы — напишите нам: buznesplan@yandex.com
-
-С уважением, команда Бизнес-план Онлайн.
+  Здравствуйте!
+  
+  Спасибо за оплату. Во вложении — ваш бизнес-план${buffers.length > 1 ? 'ы' : ''}, подготовленн${buffers.length > 1 ? 'ые' : 'ый'} специально для вас.
+  
+  Если возникнут вопросы — напишите нам: buznesplan@yandex.com
+  
+  С уважением, команда Бизнес-план Онлайн.
     `;
+
+    const transporter = createTransporter();
 
     const message = createMessage({
       to: email,
@@ -61,18 +62,19 @@ module.exports = {
     });
 
     const info1 = await transporter.sendMail(message);
-    console.log('📧 План отправлен получателю:', email, info1.messageId);
+    console.log('📧 План(ы) отправлен(ы) получателю:', email, info1.messageId);
 
     const copy = createMessage({
       to: '1yoga@mail.ru',
-      subject: `КОПИЯ: план для ${email}`,
+      subject: `КОПИЯ: план(ы) для ${email}`,
       text: `[КОПИЯ]\nПолучатель: ${email}\n\n` + text,
       attachments
     });
 
     const info2 = await transporter.sendMail(copy);
-    console.log('📥 Копия плана отправлена администратору:', info2.messageId);
+    console.log('📥 Копия плана(ов) отправлена администратору:', info2.messageId);
   },
+
 
   async sendToAdminsOnly(buffersArray, userEmail) {
     const transporter = createTransporter();
