@@ -281,6 +281,7 @@ app.post('/yookassa-webhook-tilda', express.json(), async (req, res) => {
     }).where(eq(orders.id, orderId));
 
     console.log(`✅ Оплата по заказу ${orderId} подтверждена`);
+    await trySendTildaOrderById(orderId);
 
     return res.sendStatus(200);
   } catch (err) {
@@ -288,7 +289,6 @@ app.post('/yookassa-webhook-tilda', express.json(), async (req, res) => {
     return res.sendStatus(500);
   }
 });
-
 
 app.get('/payment-success', async (req, res) => {
   const { id } = req.query;
@@ -314,7 +314,6 @@ app.get('/payment-success', async (req, res) => {
     return res.status(500).send('❌ Внутренняя ошибка. Попробуйте позже.');
   }
 });
-
 
 app.get('/preview/:id', async (req, res) => {
   const { id } = req.params;
@@ -379,6 +378,59 @@ async function safeSendFull(docx, email, retries = 3, delayMs = 3000) {
   return false;
 }
 
+async function trySendTildaOrderById(orderId, retries = 30, intervalMs = 10000) {
+  for (let i = 0; i < retries; i++) {
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    if (!order) {
+      console.error(`❌ Заказ ${orderId} не найден`);
+      return;
+    }
+
+    if (order.status === 'completed' && !order.sent_at) {
+      const docs = await db.select().from(documents).where(eq(documents.order_id, orderId));
+      const buffers = [];
+
+      for (const doc of docs) {
+        if (doc.status !== 'completed') continue;
+
+        const clean = preprocessText(doc.gpt_response);
+        const structure = [
+          '1. Краткое резюме',
+          '2. Описание целей и задач проекта',
+          '3. Анализ рыночной ниши',
+          '4. Информация о проекте',
+          '5. Описание продукта/услуги',
+          '6. Производственный план',
+          '7. Маркетинговый план',
+          '8. Финансовый план',
+          '9. Анализ возможных рисков'
+        ];
+
+        const docx = await generateWord(clean, null, structure);
+        buffers.push(docx);
+      }
+
+      if (buffers.length > 0) {
+        const success = await safeSendFull(buffers.length === 1 ? buffers[0] : buffers, order.email);
+        if (success) {
+          await db.update(orders).set({ sent_at: new Date() }).where(eq(orders.id, orderId));
+          console.log(`📨 Планы по заказу ${orderId} успешно отправлены клиенту`);
+        } else {
+          console.warn(`⚠️ Не удалось отправить письма клиенту ${order.email}`);
+        }
+      } else {
+        console.warn(`⏳ Документы по заказу ${orderId} ещё не готовы`);
+      }
+
+      return;
+    }
+
+    console.log(`⏳ Заказ ${orderId} ещё не завершён. Попытка ${i + 1}/${retries}`);
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+  }
+
+  console.warn(`⚠️ Документы по заказу ${orderId} не были отправлены после ${retries} попыток`);
+}
 
 async function trySendPlanById(planId, retries = 30, intervalMs = 10000) {
   for (let i = 0; i < retries; i++) {
