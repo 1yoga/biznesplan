@@ -154,14 +154,28 @@ const systemPromptForm2 = `Ты профессиональный бизнес-к
 
 const TILDA_STRUCTURE = [
   '1. Краткое резюме',
-  '2. Описание целей и задач проекта',
-  '3. Анализ рыночной ниши',
-  '4. Информация о проекте',
-  '5. Описание продукта/услуги',
+  '2. Цели и задачи проекта',
+  '3. Анализ рынка',
+  '4. Описание проекта',
+  '5. Описание продукции/услуг',
   '6. Производственный план',
   '7. Маркетинговый план',
   '8. Финансовый план',
-  '9. Анализ возможных рисков'
+  '9. Анализ рисков',
+  '10. Социальный эффект'
 ];
 
-module.exports = { STRUCTURES, systemPromptForm1, systemPromptForm2, TILDA_STRUCTURE };
+  const sectionTitles = [
+  { title: 'Краткое резюме', target_word_count: 400 },
+  { title: 'Цели и задачи проекта', target_word_count: 500 },
+  { title: 'Анализ рынка', target_word_count: 600 },
+  { title: 'Описание проекта', target_word_count: 600 },
+  { title: 'Описание продукции/услуг', target_word_count: 600 },
+  { title: 'Производственный план', target_word_count: 700 },
+  { title: 'Маркетинговый план', target_word_count: 700 },
+  { title: 'Финансовый план', target_word_count: 1200 },
+  { title: 'Анализ рисков', target_word_count: 600 },
+  { title: 'Социальный эффект', target_word_count: 400 }
+];
+
+module.exports = { STRUCTURES, systemPromptForm1, systemPromptForm2, TILDA_STRUCTURE, sectionTitles };
