@@ -101,6 +101,64 @@ ${ideaText.trim()}
 - Предпочтительно использование форм бизнеса ЛПХ, Самозанятость (ставка налога 6%), ИП УСН «Доходы» (ставка налога 6%), ИП УСН «Доходы минус расходы» (ставка налога 15%). Если использование форм бизнеса (АО, НКО ООО и других) не оправдано финансовыми показателями (в частности низкой ставкой налогообложения). 
 -----`;
 }
+function extractPreviewBlocks(markdown) {
+  const lines = markdown.split("\n");
+  const blocks = [];
+  let currentBlock = null;
+
+  for (let line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const heading = /^#\s+(.+)/.exec(trimmed);
+    if (heading) {
+      if (currentBlock) blocks.push(currentBlock);
+      currentBlock = { title: heading[1], content: "" };
+    } else if (currentBlock) {
+      currentBlock.content += trimmed + "\n";
+    }
+  }
+
+  if (currentBlock) blocks.push(currentBlock);
+
+  return blocks.slice(0, 2);
+}
+
+function preprocessText(text) {
+  return text.split('\n')
+    .map(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return '';
+      if (/^\d+\.\s+/.test(trimmed)) return `### ${trimmed}`;
+      return trimmed;
+    })
+    .join('\n')
+    .replace(/\(\d{2,4}–\d{2,4} слов\)/g, '');
+}
+
+function buildPaymentParams({ amount, returnUrl, email, orderId }) {
+  return {
+    amount: { value: amount, currency: 'RUB' },
+    confirmation: {
+      type: 'redirect',
+      return_url: returnUrl,
+    },
+    capture: true,
+    description: `Оплата бизнес-плана для ${email}`,
+    metadata: { orderId },
+    receipt: {
+      customer: { email },
+      items: [{
+        description: 'Бизнес-план',
+        quantity: 1,
+        amount: { value: amount, currency: 'RUB' },
+        vat_code: 1,
+        payment_mode: 'full_payment',
+        payment_subject: 'service'
+      }]
+    }
+  };
+}
 
 
-module.exports = { ADMIN_EMAILS, buildIdeasPrompt, buildPlanPrompt };
+module.exports = { ADMIN_EMAILS, buildIdeasPrompt, buildPlanPrompt, extractPreviewBlocks, preprocessText, buildPaymentParams };
