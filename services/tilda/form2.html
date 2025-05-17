@@ -1,65 +1,134 @@
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    const rec = document.querySelector('#rec1029493506');
-    if (!rec) return;
+    // --------------------- Form 2 ---------------------
+    const rec2 = document.querySelector('#rec1029493506');
+    if (rec2) {
+      const form2 = rec2.querySelector('form');
+      const button2 = rec2.querySelector('button.t-submit');
 
-    const form = rec.querySelector('form');
-    const button = rec.querySelector('button.t-submit');
-    if (!form || !button) return;
+      if (form2 && button2) {
+        button2.addEventListener('click', function () {
+          setTimeout(() => {
+            const email = form2.querySelector('input[name="email"]');
+            const location = form2.querySelector('input[name="location"]');
 
-    button.addEventListener('click', function () {
-      setTimeout(() => {
-        const email = form.querySelector('input[name="email"]');
-        const location = form.querySelector('input[name="location"]');
+            const required = [email, location];
+            const hasEmpty = required.some(f => !f || f.value.trim() === '');
+            if (hasEmpty) {
+              console.warn('❌ Обязательные поля не заполнены');
+              return;
+            }
 
-        if (!email || !location) {
-          console.warn('❌ Нет нужных полей');
-          return;
-        }
+            const emailVal = email.value.trim();
+            const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
+            if (!isEmail) {
+              email.setCustomValidity('Укажите корректный email');
+              email.reportValidity();
+              return;
+            }
+            email.setCustomValidity('');
 
-        const emailValue = email.value.trim();
-        const locationValue = location.value.trim();
+            const payload = {
+              email: emailVal,
+              fullName: form2.querySelector('input[name="fullName"]')?.value.trim() || '',
+              location: location.value.trim(),
+              additionalInfo: form2.querySelector('textarea[name="additionalInfo"]')?.value.trim() || '',
+              ownInvestments: form2.querySelector('input[name="ownInvestment"]')?.value || '0',
+              formname: 'form2',
+              source_url: window.location.href
+            };
 
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailValue || !emailPattern.test(emailValue)) {
-          email.reportValidity();
-          console.warn('❌ Email не прошёл валидацию');
-          return;
-        }
-
-        if (!locationValue) {
-          location.reportValidity();
-          console.warn('❌ Не указано местоположение');
-          return;
-        }
-
-        const payload = {
-          email: emailValue,
-          fullName: form.querySelector('input[name="fullName"]')?.value.trim() || '',
-          location: locationValue,
-          additionalInfo: form.querySelector('textarea[name="additionalInfo"]')?.value.trim() || '',
-          ownInvestments: form.querySelector('input[name="ownInvestment"]')?.value || '0',
-          formname: 'form2',
-          source_url: window.location.href
-        };
-
-        fetch('https://gpt-plan-api-production.up.railway.app/tilda-submit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams(payload).toString()
-        }).then(res => res.json()).then(result => {
-          if (result?.confirmation_url) {
-            console.log('✅ Переход к оплате...');
-            window.location.href = result.confirmation_url;
-          } else {
-            console.error('❌ Ошибка генерации:', result);
-            alert('Ошибка генерации. Попробуйте позже.');
-          }
-        }).catch(err => {
-          console.error('❌ Ошибка отправки:', err);
-          alert('Ошибка соединения. Попробуйте позже.');
+            fetch('https://gpt-plan-api-production.up.railway.app/tilda-submit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams(payload).toString()
+            })
+              .then(res => res.json())
+              .then(result => {
+                if (result?.confirmation_url) {
+                  console.log('✅ Переход к оплате...');
+                  window.location.href = result.confirmation_url;
+                } else {
+                  console.error('❌ Ошибка генерации:', result);
+                  alert('Ошибка генерации. Попробуйте позже.');
+                }
+              })
+              .catch(err => {
+                console.error('❌ Ошибка отправки:', err);
+                alert('Ошибка соединения. Попробуйте позже.');
+              });
+          }, 100);
         });
-      }, 50);
-    });
+      }
+    }
+
+    // --------------------- Form 1 ---------------------
+    const rec1 = document.querySelector('#rec1029495051');
+    if (rec1) {
+      const form1 = rec1.querySelector('form');
+      const button1 = rec1.querySelector('button.t-submit');
+
+      if (form1 && button1) {
+        button1.addEventListener('click', function () {
+          setTimeout(() => {
+            const email = form1.querySelector('input[name="email"]');
+            const location = form1.querySelector('input[name="location"]');
+            const businessIdea = form1.querySelector('textarea[name="businessIdea"]');
+            const impactDescription = form1.querySelector('textarea[name="impactDescription"]');
+
+            const required = [email, location, businessIdea, impactDescription];
+            const hasEmpty = required.some(f => !f || f.value.trim() === '');
+            if (hasEmpty) {
+              console.warn('❌ Обязательные поля не заполнены');
+              return;
+            }
+
+            const emailVal = email.value.trim();
+            const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
+            if (!isEmail) {
+              email.setCustomValidity('Укажите корректный email');
+              email.reportValidity();
+              return;
+            }
+            email.setCustomValidity('');
+
+            const payload = {
+              email: emailVal,
+              fullName: form1.querySelector('input[name="fullName"]')?.value.trim() || '',
+              location: location.value.trim(),
+              ownInvestments: form1.querySelector('input[name="ownInvestment"]')?.value || '0',
+              assetsDescription: form1.querySelector('textarea[name="assetsDescription"]')?.value.trim() || '',
+              advantages: form1.querySelector('textarea[name="advantages"]')?.value.trim() || '',
+              businessIdea: businessIdea.value.trim(),
+              impactDescription: impactDescription.value.trim(),
+              additionalInfo: form1.querySelector('textarea[name="additionalInfo"]')?.value.trim() || '',
+              formname: 'form1',
+              source_url: window.location.href
+            };
+
+            fetch('https://gpt-plan-api-production.up.railway.app/tilda-submit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams(payload).toString()
+            })
+              .then(res => res.json())
+              .then(result => {
+                if (result?.confirmation_url) {
+                  console.log('✅ Переход к оплате...');
+                  window.location.href = result.confirmation_url;
+                } else {
+                  console.error('❌ Ошибка генерации:', result);
+                  alert('Ошибка генерации. Попробуйте позже.');
+                }
+              })
+              .catch(err => {
+                console.error('❌ Ошибка отправки:', err);
+                alert('Ошибка соединения. Попробуйте позже.');
+              });
+          }, 100);
+        });
+      }
+    }
   });
 </script>
+---
