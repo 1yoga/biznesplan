@@ -105,8 +105,6 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
     ? [generatePromptForm1(data)]
     : await generatePromptForm2(data);
 
-  const systemPrompt = isForm1 ? systemPromptForm1 : systemPromptForm2;
-
   for (let i = 0; i < prompts.length; i++) {
     const prompt = prompts[i];
     const documentId = uuidv4();
@@ -124,7 +122,7 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
       orderId,
       email,
       basePrompt: prompt,
-      systemPrompt
+      systemPromptForm1
     });
   }
 
@@ -363,7 +361,7 @@ async function safeSendFull(docx, email, retries = 3, delayMs = 3000) {
   return false;
 }
 
-async function trySendTildaOrderById(orderId, retries = 30, intervalMs = 30000) {
+async function trySendTildaOrderById(orderId, retries = 100, intervalMs = 30000) {
   for (let i = 0; i < retries; i++) {
     const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
     if (!order) {
