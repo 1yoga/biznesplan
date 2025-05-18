@@ -159,12 +159,7 @@ async function startSectionGeneration({ documentId, basePrompt, systemPrompt }) 
     try {
       await delay(3000)
       messages.push({ role: 'user', content: section.prompt });
-      const result = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages,
-        temperature: 0.7,
-        max_tokens: 8192
-      });
+      const result = await safeGptCall({ messages, max_tokens: 8192 });
 
       const response = result.choices?.[0]?.message?.content || 'Ошибка генерации';
       const wordCount = response.split(/\s+/).filter(Boolean).length;
@@ -345,6 +340,34 @@ app.post('/yookassa-webhook-tilda', express.json(), async (req, res) => {
     return res.sendStatus(500);
   }
 });
+
+async function safeGptCall({ messages, max_tokens = 8192, temperature = 0.7 }) {
+  let retries = 5;
+
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages,
+        temperature,
+        max_tokens
+      });
+
+      return response;
+    } catch (err) {
+      if (err.code === 'rate_limit_exceeded') {
+        const retryAfter = err.headers?.['retry-after'] || 30;
+        const waitTime = Number(retryAfter) * 1000;
+        console.warn(`🚦 Rate limit. Ждём ${waitTime / 1000} сек...`);
+        await delay(waitTime);
+      } else {
+        throw err; // если ошибка не связана с лимитом — пробрасываем
+      }
+    }
+  }
+
+  throw new Error('💥 Превышено количество попыток запроса к GPT (rate limit)');
+}
 
 async function safeSendFull(docx, email, retries = 3, delayMs = 3000) {
   for (let i = 0; i < retries; i++) {
