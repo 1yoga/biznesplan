@@ -104,7 +104,7 @@ module.exports = {
       });
 
       await transporter.sendMail(fullMsg);
-      console.log('📤 3 плана отправлены администратору:', adminEmail);
+      console.log('отправлены администратору:', adminEmail);
     }
   }
 };
