@@ -360,7 +360,6 @@ async function safeSendFull(docx, email, retries = 3, delayMs = 3000) {
 }
 
 async function trySendTildaOrderById(orderId, retries = 100, intervalMs = 30000) {
-  const buffers = await generateTildaBuffers(orderId);
   for (let i = 0; i < retries; i++) {
     const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
     if (!order) {
@@ -369,6 +368,7 @@ async function trySendTildaOrderById(orderId, retries = 100, intervalMs = 30000)
     }
 
     if (order.status === 'completed' && !order.sent_at) {
+      const buffers = await generateTildaBuffers(orderId); // 🔄 обновлять при каждой проверке
 
       if (buffers.length > 0) {
         const success = await safeSendFull(buffers.length === 1 ? buffers[0] : buffers, order.email);
@@ -391,6 +391,7 @@ async function trySendTildaOrderById(orderId, retries = 100, intervalMs = 30000)
 
   console.warn(`⚠️ Документы по заказу ${orderId} не были отправлены после ${retries} попыток`);
 }
+
 
 async function generateTildaBuffers(orderId) {
   const docs = await db.select().from(documents).where(eq(documents.order_id, orderId));
