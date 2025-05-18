@@ -125,21 +125,12 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
       basePrompt: prompt,
       systemPrompt
     });
+  }
 
-    // 🧩 Проверяем, все ли документы по заказу готовы
-    const orderDocs = await db.select().from(documents).where(eq(documents.order_id, orderId));
-    const docsArray = Array.isArray(orderDocs) ? orderDocs : [];
-
-    const allDocsCompleted = docsArray.length > 0 && docsArray.every(doc => doc.status === 'completed');
-
-    if (allDocsCompleted) {
-      await db.update(orders).set({
-        status: 'completed',
-        updated_at: new Date()
-      }).where(eq(orders.id, orderId));
-
-      console.log(`📦 Все документы сгенерированы. Статус заказа ${orderId} → 'completed'`);
-    }
+  const docsArray = await db.select().from(documents).where(eq(documents.order_id, orderId));
+  if (docsArray.length && docsArray.every(doc => doc.status === 'completed')) {
+    await db.update(orders).set({ status: 'completed', updated_at: new Date() }).where(eq(orders.id, orderId));
+    console.log(`📦 Все документы сгенерированы. Статус заказа ${orderId} → 'completed'`);
   }
 }
 
@@ -165,6 +156,7 @@ async function startSectionGeneration({ documentId, orderId, email, basePrompt, 
 
   for (const section of sectionsToInsert) {
     try {
+      await delay(3000)
       messages.push({ role: 'user', content: section.prompt });
       const result = await openai.chat.completions.create({
         model: 'gpt-4o',
