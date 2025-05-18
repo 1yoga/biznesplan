@@ -157,7 +157,7 @@ async function startSectionGeneration({ documentId, basePrompt, systemPrompt }) 
 
   for (const section of sectionsToInsert) {
     try {
-      await delay(3000)
+      await delay(5000)
       messages.push({ role: 'user', content: section.prompt });
       const result = await safeGptCall({ messages, max_tokens: 8192 });
 
