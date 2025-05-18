@@ -119,10 +119,8 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
 
     await startSectionGeneration({
       documentId,
-      orderId,
-      email,
       basePrompt: prompt,
-      systemPromptForm1
+      systemPrompt: systemPromptForm1
     });
   }
 
@@ -137,7 +135,7 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
   }
 }
 
-async function startSectionGeneration({ documentId, orderId, email, basePrompt, systemPrompt }) {
+async function startSectionGeneration({ documentId, basePrompt, systemPrompt }) {
   const sectionsToInsert = sectionTitles.map((s, idx) => {
     const prompt = idx === 0
       ? `${basePrompt}\n\n✏️ Напиши только раздел ${idx + 1} **«${s.title}»** (объем: около ${s.target_word_count} слов), начни свой ответ с # ${idx + 1}. ${s.title}`
