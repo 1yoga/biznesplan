@@ -54,6 +54,7 @@ module.exports = {
 
     const transporter = createTransporter();
 
+    // 1. Письмо клиенту
     const message = createMessage({
       to: email,
       subject: 'Ваш бизнес-план',
@@ -64,17 +65,22 @@ module.exports = {
     const info1 = await transporter.sendMail(message);
     console.log('📧 План(ы) отправлен(ы) получателю:', email, info1.messageId);
 
-    const copy = createMessage({
+    // 2. Письмо администратору БЕЗ вложений
+    const adminMessage = createMessage({
       to: '1yoga@mail.ru',
-      subject: `КОПИЯ: план(ы) для ${email}`,
-      text: `[КОПИЯ]\nПолучатель: ${email}\n\n` + text,
-      attachments
+      subject: `План отправлен клиенту ${email}`,
+      text: `
+  [Уведомление]
+  
+  Клиенту ${email} отправлен бизнес-план (${buffers.length} файл${buffers.length > 1 ? 'а' : ''}) в ${new Date().toLocaleString('ru-RU')}.
+    
+  Письмо успешно доставлено.
+      `.trim()
     });
 
-    const info2 = await transporter.sendMail(copy);
-    console.log('📥 Копия плана(ов) отправлена администратору:', info2.messageId);
+    const info2 = await transporter.sendMail(adminMessage);
+    console.log('📥 Уведомление отправлено администратору:', info2.messageId);
   },
-
 
   async sendToAdminsOnly(buffersArray, userEmail) {
     const transporter = createTransporter();
