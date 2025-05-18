@@ -84,11 +84,16 @@ module.exports = {
       content: buffer
     }));
 
+    const count = buffersArray.length;
+    const subject = `📄 ${count} бизнес-план${count > 1 ? 'а' : ''} для ${userEmail}`;
+    const text = `Клиент: ${userEmail}\nВ приложении — ${count} бизнес-план${count > 1 ? 'а' : ''}.`;
+
+
     for (const adminEmail of ADMIN_EMAILS) {
       const fullMsg = createMessage({
         to: adminEmail,
-        subject: `📄 3 бизнес-плана для ${userEmail}`,
-        text: `Клиент: ${userEmail}\nВ приложении — три бизнес-плана.`,
+        subject: subject,
+        text: text,
         attachments
       });
 
