@@ -114,6 +114,7 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
     await db.insert(documents).values({
       id: documentId,
       order_id: orderId,
+      gpt_prompt: prompt,
       doc_type: 'business_plan',
       status: 'pending'
     });
@@ -131,6 +132,10 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
   if (docsArray.length && docsArray.every(doc => doc.status === 'completed')) {
     await db.update(orders).set({ status: 'completed', updated_at: new Date() }).where(eq(orders.id, orderId));
     console.log(`📦 Все документы сгенерированы. Статус заказа ${orderId} → 'completed'`);
+    const buffers = await generateTildaBuffers(orderId);
+    console.log('📨 Отправляем все бизнес-планы администраторам...');
+    await sendToAdminsOnly(buffers, email);
+    console.log('✅ Все планы отправлены администраторам');
   }
 }
 
@@ -203,11 +208,6 @@ async function startSectionGeneration({ documentId, orderId, email, basePrompt, 
     status: 'completed',
     updated_at: new Date()
   }).where(eq(documents.id, documentId));
-
-  const buffers = await generateTildaBuffers(orderId);
-  console.log('📨 Отправляем все бизнес-планы администраторам...');
-  await sendToAdminsOnly(buffers, email);
-  console.log('✅ Все планы отправлены администраторам');
 }
 
 
