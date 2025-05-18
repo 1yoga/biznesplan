@@ -165,9 +165,7 @@ async function startSectionGeneration({ documentId, orderId, email, basePrompt, 
 
   for (const section of sectionsToInsert) {
     try {
-      await delay(25_000);
       messages.push({ role: 'user', content: section.prompt });
-
       const result = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages,
