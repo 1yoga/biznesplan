@@ -73,7 +73,7 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
   const returnUrl = data.source_url || 'https://biznesplan.online';
 
   try {
-    const amount = isForm1 ? process.env.FORM1_PRICE : process.env.FORM2_PRICE;
+    const amount = data.price;
     console.log('💳 Сумма платежа:', amount);
 
     const paymentPayload = buildPaymentParams({ amount, returnUrl, email: data.email, orderId });
