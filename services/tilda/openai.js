@@ -1,20 +1,13 @@
 const { OpenAI } = require('openai')
-const {systemPromptForm1, systemPromptForm2} = require("../consts");
+const {systemPromptForm1, systemPromptForm2, systemPromptForm3} = require("../consts");
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   organization: process.env.OPENAI_ORG_ID
 })
 
-module.exports = async function generatePlanTilda(prompt, form) {
+module.exports = async function generatePlanTilda(prompt) {
 
   let systemPrompt = 'Ты профессиональный бизнес-консультант. Пиши в формате Markdown.'
-
-  if(form = 'form1'){
-    systemPrompt = systemPromptForm1
-  }
-  if(form = 'form2'){
-    systemPrompt = systemPromptForm2
-  }
 
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o',

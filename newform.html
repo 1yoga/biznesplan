@@ -34,7 +34,7 @@
                             location: location.value.trim(),
                             additionalInfo: form2.querySelector('textarea[name="additionalInfo"]')?.value.trim() || '',
                             ownInvestments: form2.querySelector('input[name="ownInvestment"]')?.value || '0',
-                            formname: 'form2',
+                            formname: 'form3',
                             price: '1490.00',
                             source_url: 'https://biznesplan.online/spasibo_za_oplatu'
                         };
@@ -97,13 +97,15 @@
                             email: emailVal,
                             fullName: form1.querySelector('input[name="fullName"]')?.value.trim() || '',
                             location: location.value.trim(),
-                            ownInvestments: form1.querySelector('input[name="ownInvestment"]')?.value || '0',
+                            requestedAmount: form1.querySelector('input[name="requestedAmount"]')?.value.trim() || '',
+                            ownInvestments: form1.querySelector('input[name="ownInvestment"]')?.value.trim() || '',
                             assetsDescription: form1.querySelector('textarea[name="assetsDescription"]')?.value.trim() || '',
                             advantages: form1.querySelector('textarea[name="advantages"]')?.value.trim() || '',
                             businessIdea: businessIdea.value.trim(),
                             impactDescription: impactDescription.value.trim(),
                             additionalInfo: form1.querySelector('textarea[name="additionalInfo"]')?.value.trim() || '',
-                            formname: 'form1',
+                            purpose: form1.querySelector('select[name="purpose"]')?.value || '',
+                            formname: 'form4',
                             price: '990.00',
                             source_url: 'https://biznesplan.online/spasibo_za_oplatu'
                         };

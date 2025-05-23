@@ -1,11 +1,11 @@
-const { buildIdeasPrompt, buildPlanPrompt } = require("../utils");
+const { buildIdeasPrompt2, buildPlanPrompt2 } = require("../utils");
 const generatePlanTilda = require('../../services/tilda/openai');
 
-async function generatePromptForm2(data) {
-  console.log('🚀 Старт генерации promptов для form2...');
+async function generatePromptForm4(data) {
+  console.log('🚀 Старт генерации promptов для form4...');
   console.log('📬 Входные данные:', JSON.stringify(data, null, 2));
 
-  const ideasPrompt = buildIdeasPrompt(data);
+  const ideasPrompt = buildIdeasPrompt2(data);
 
   // 1. Получаем текст с 3 идеями
   const ideasText = await generatePlanTilda(ideasPrompt);
@@ -21,7 +21,7 @@ async function generatePromptForm2(data) {
   }
 
   const result = ideaBlocks.map((idea, i) => {
-    return buildPlanPrompt(data, idea, i);
+    return buildPlanPrompt2(data, idea, i);
   });
 
   console.log('✅ Генерация 3 promptов завершена.\n');
@@ -29,4 +29,4 @@ async function generatePromptForm2(data) {
   return result;
 }
 
-module.exports = generatePromptForm2;
+module.exports = generatePromptForm4;

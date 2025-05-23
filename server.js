@@ -11,6 +11,8 @@ const generatePrompt = require('./services/prompt');
 const generatePrompt2 = require('./services/prompt2');
 const generatePromptForm1 = require('./services/tilda/promptForm1');
 const generatePromptForm2 = require('./services/tilda/promptForm2');
+const generatePromptForm3 = require('./services/tilda/promptForm3');
+const generatePromptForm4 = require('./services/tilda/promptForm4');
 const generatePlanTilda = require('./services/tilda/openai');
 const { STRUCTURES, TILDA_STRUCTURE, systemPromptForm1, systemPromptForm2, sectionTitles} = require('./services/consts');
 
@@ -52,12 +54,11 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
     return res.status(400).json({ error: 'Не указан source_url' });
   }
 
-  if (data.formname !== 'form1' && data.formname !== 'form2') {
+  if (data.formname !== 'form1' && data.formname !== 'form2' && data.formname !== 'form3' && data.formname !== 'form4') {
     console.warn('❌ Некорректный formname:', data.formname);
     return res.status(400).json({ error: 'Некорректный formname' });
   }
 
-  const isForm1 = data.formname === 'form1';
   const orderId = uuidv4();
 
   console.log('📝 Создаём заказ с ID:', orderId);
@@ -99,11 +100,28 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
 
 
 async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
-  const isForm1 = data.formname === 'form1';
+  let prompts;
 
-  const prompts = isForm1
-    ? [generatePromptForm1(data)]
-    : await generatePromptForm2(data);
+  switch (data.formname) {
+    case 'form1':
+      prompts = [generatePromptForm1(data)];
+      break;
+
+    case 'form2':
+      prompts = await generatePromptForm2(data);
+      break;
+
+    case 'form3':
+      prompts = [generatePromptForm3(data)];
+      break;
+
+    case 'form4':
+      prompts = await generatePromptForm4(data);
+      break;
+
+    default:
+      throw new Error(`Неизвестное имя формы: ${data.formname}`);
+  }
 
   for (let i = 0; i < prompts.length; i++) {
     const prompt = prompts[i];
