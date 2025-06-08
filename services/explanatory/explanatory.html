@@ -1,0 +1,143 @@
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function sendEvent(goal) {
+            console.log(`???? Метрика: ${goal}`);
+            if (window.ym) ym(101917287, 'reachGoal', goal);
+        }
+
+        const recExplain = document.querySelector('#rec1014543316');
+
+        if (recExplain) {
+            const form = recExplain.querySelector('form');
+            const button = recExplain.querySelector('button.t-submit');
+
+            if (form && button) {
+                button.addEventListener('click', function () {
+                    console.log('???? Нажата кнопка отправки формы объяснительной');
+
+                    setTimeout(() => {
+                        console.log('???? Проверка обязательных полей...');
+
+                        const email = form.querySelector('input[name="email"]');
+                        const docType = form.querySelector('select[name="docType"]');
+                        const recipient = form.querySelector('input[name="recipient"]');
+                        const organization = form.querySelector('input[name="organization"]');
+                        const fullName = form.querySelector('input[name="fullName"]');
+                        const position = form.querySelector('input[name="position"]');
+                        const incidentDate = form.querySelector('input[name="incidentDate"]');
+                        const reasonSource = form.querySelector('select[name="reasonSource"]');
+                        const reason = form.querySelector('input[name="reason');
+                        const description = form.querySelector('textarea[name="description"]');
+
+                        const fields = {
+                            email,
+                            docType,
+                            recipient,
+                            organization,
+                            fullName,
+                            position,
+                            incidentDate,
+                            reasonSource,
+                            reason,
+                            description
+                        };
+
+                        let hasEmpty = false;
+
+                        for (const [name, field] of Object.entries(fields)) {
+                            const val = field?.value?.trim();
+                            console.log('???? Значение incidentDate:', incidentDate?.value);
+
+                            const isEmpty =
+                                !val ||
+                                (name === 'incidentDate' && val === '__/__/____');
+
+                            if (isEmpty) {
+                                console.warn(`❌ Поле ${name} не заполнено или некорректно (${val})`);
+                                field?.classList.add('t-input-error');
+                                hasEmpty = true;
+                            } else {
+                                field?.classList.remove('t-input-error');
+                            }
+                        }
+
+                        if (hasEmpty) {
+                            sendEvent('fieldsEmpty');
+                            return;
+                        }
+
+                        const emailVal = email.value.trim();
+                        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
+
+                        if (!isEmail) {
+                            sendEvent('emailInvalid');
+                            email.setCustomValidity('Укажите корректный email');
+                            email.reportValidity();
+                            console.warn('❌ Некорректный email:', emailVal);
+                            return;
+                        }
+
+                        email.setCustomValidity('');
+                        console.log('✅ Все поля корректны');
+
+                        const payload = {
+                            email: emailVal,
+                            docType: docType.value.trim(),
+                            recipient: recipient.value.trim(),
+                            organization: organization.value.trim(),
+                            fullName: fullName.value.trim(),
+                            position: position.value.trim(),
+                            incidentDate: incidentDate.value.trim(),
+                            reasonSource: reasonSource.value.trim(),
+                            reason: reason.value.trim(),
+                            description: description.value.trim(),
+                            formname: 'explanatory',
+                            price: reasonSource.value === 'Придумайте причину' ? '790.00' : '299.00',
+                            source_url: 'https://boxinfox.ru/obyasnitelnaya#rec1014543316',
+                            page: 'explanatory'
+                        };
+
+                        console.log('???? Payload:', payload);
+
+                        sendEvent('paymentAttempt');
+
+                        fetch('https://gpt-plan-api-production.up.railway.app/explanatory-submit', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: new URLSearchParams(payload).toString()
+                        })
+                            .then(res => res.json())
+                            .then(result => {
+                                console.log('???? Ответ от сервера:', result);
+
+                                if (result?.confirmation_url) {
+                                    sendEvent('paymentUrlReceived');
+                                    let attempts = 0;
+                                    function tryRedirect() {
+                                        if (attempts < 3) {
+                                            attempts++;
+                                            console.log(`➡️ Попытка #${attempts} перехода...`);
+                                            window.location.href = result.confirmation_url;
+                                            setTimeout(tryRedirect, 2000);
+                                        } else {
+                                            sendEvent('paymentUrlFailed');
+                                            alert('Не удалось перейти на страницу оплаты. Попробуйте позже.');
+                                        }
+                                    }
+                                    tryRedirect();
+                                } else {
+                                    sendEvent('paymentUrlFailed');
+                                    alert('Ошибка генерации ссылки. Попробуйте позже.');
+                                }
+                            })
+                            .catch(err => {
+                                sendEvent('paymentError');
+                                console.error('❌ Ошибка при отправке запроса:', err);
+                                alert('Ошибка соединения. Попробуйте позже.');
+                            });
+                    }, 300);
+                });
+            }
+        }
+    });
+</script>
