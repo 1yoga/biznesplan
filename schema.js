@@ -39,4 +39,4 @@ const sections = pgTable('sections', {
   updated_at: timestamp('updated_at').defaultNow(),
 });
 
-module.exports = { plans, orders, documents, sections };
+module.exports = { orders, documents, sections };
