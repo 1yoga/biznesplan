@@ -303,14 +303,12 @@ async function safeGptCall({ messages, max_tokens = 8192, temperature = 0.7 }) {
 
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await openai.chat.completions.create({
+      return await openai.chat.completions.create({
         model: 'gpt-4o',
         messages,
         temperature,
         max_tokens
       });
-
-      return response;
     } catch (err) {
       if (err.code === 'rate_limit_exceeded') {
         const retryAfter = err.headers?.['retry-after'] || 30;
