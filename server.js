@@ -13,7 +13,7 @@ const generatePromptForm4 = require('./services/tilda/promptForm4');
 const { TILDA_STRUCTURE, systemPromptForm1, systemPromptForm2, sectionTitles} = require('./services/consts');
 
 const YooKassa = require('yookassa');
-const {sendToAdminsOnly} = require("./services/mailer");
+const {sendFull, sendToAdminsOnly} = require("./services/mailer");
 const {preprocessText, buildPaymentParams} = require("./services/utils");
 const { OpenAI } = require('openai')
 const openai = new OpenAI({
@@ -93,6 +93,89 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
     return res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
+
+app.post('/yookassa-webhook-tilda', express.json(), async (req, res) => {
+  try {
+    const body = req.body;
+    if (body.event !== 'payment.succeeded') return res.sendStatus(200);
+
+    const payment = body.object;
+    const orderId = payment.metadata?.orderId;
+
+    if (!orderId) return res.status(400).send('❌ Нет orderId в metadata');
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    if (!order) {
+      console.warn(`❌ Заказ не найден по ID: ${orderId}`);
+      return res.sendStatus(404);
+    }
+
+    if (order.yookassa_status === 'succeeded') return res.sendStatus(200);
+
+    const now = new Date();
+
+    await db.update(orders).set({
+      yookassa_status: 'succeeded',
+      is_paid: true,
+      paid_at: now,
+      updated_at: now,
+    }).where(eq(orders.id, orderId));
+
+    console.log(`✅ Оплата по заказу ${orderId} подтверждена`);
+    await trySendTildaOrderById(orderId);
+
+    return res.sendStatus(200);
+  } catch (err) {
+    console.error('❌ Ошибка в /yookassa-webhook:', err);
+    return res.sendStatus(500);
+  }
+});
+
+async function safeSendFull(docx, email, retries = 3, delayMs = 3000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await sendFull(docx, email);
+      return true;
+    } catch (err) {
+      console.error(`❌ Ошибка отправки письма (попытка ${i + 1}):`, err);
+      await new Promise(res => setTimeout(res, delayMs));
+    }
+  }
+  return false;
+}
+
+async function trySendTildaOrderById(orderId, retries = 100, intervalMs = 30000) {
+  for (let i = 0; i < retries; i++) {
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    if (!order) {
+      console.error(`❌ Заказ ${orderId} не найден`);
+      return;
+    }
+
+    if (order.status === 'completed' && !order.sent_at) {
+      const buffers = await generateTildaBuffers(orderId); // 🔄 обновлять при каждой проверке
+
+      if (buffers.length > 0) {
+        const success = await safeSendFull(buffers.length === 1 ? buffers[0] : buffers, order.email);
+        if (success) {
+          await db.update(orders).set({ sent_at: new Date() }).where(eq(orders.id, orderId));
+          console.log(`📨 Планы по заказу ${orderId} успешно отправлены клиенту`);
+        } else {
+          console.warn(`⚠️ Не удалось отправить письма клиенту ${order.email}`);
+        }
+      } else {
+        console.warn(`⏳ Документы по заказу ${orderId} ещё не готовы`);
+      }
+
+      return;
+    }
+
+    console.log(`⏳ Заказ ${orderId} ещё не завершён. Попытка ${i + 1}/${retries}`);
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+  }
+
+  console.warn(`⚠️ Документы по заказу ${orderId} не были отправлены после ${retries} попыток`);
+}
 
 
 async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
