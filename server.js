@@ -135,7 +135,7 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
   const data = req.body;
   console.log('📥 Получены данные формы объяснительной:', data);
 
-  const orderId = uuidv4();
+  /*const orderId = uuidv4();
 
   if (!data.email || !data.docType || !data.fullName || !data.description) {
     console.warn('❌ Не хватает обязательных полей');
@@ -190,7 +190,7 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
     console.error('❌ Ошибка при создании оплаты или генерации объяснительной:', err);
     await db.update(orders).set({ status: 'error' }).where(eq(orders.id, orderId));
     return res.status(500).json({ error: 'Ошибка сервера' });
-  }
+  }*/
 });
 
 
