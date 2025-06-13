@@ -187,10 +187,10 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
 });
 
 
-async function safeSendFull(docx, email, retries = 3, delayMs = 3000) {
+async function safeSendFull(docx, email, formType = 'plan', retries = 3, delayMs = 3000) {
   for (let i = 0; i < retries; i++) {
     try {
-      await sendFull(docx, email);
+      await sendFull(docx, email, formType);
       return true;
     } catch (err) {
       console.error(`❌ Ошибка отправки письма (попытка ${i + 1}):`, err);
@@ -212,7 +212,7 @@ async function trySendTildaOrderById(orderId, retries = 100, intervalMs = 30000)
       const buffers = await generateTildaBuffers(orderId); // 🔄 обновлять при каждой проверке
 
       if (buffers.length > 0) {
-        const success = await safeSendFull(buffers.length === 1 ? buffers[0] : buffers, order.email);
+        const success = await safeSendFull(buffers.length === 1 ? buffers[0] : buffers, order.email, order.form_type);
         if (success) {
           await db.update(orders).set({ sent_at: new Date() }).where(eq(orders.id, orderId));
           console.log(`📨 Планы по заказу ${orderId} успешно отправлены клиенту`);
@@ -297,9 +297,9 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
     await db.update(orders).set({ status: 'completed', updated_at: new Date() }).where(eq(orders.id, orderId));
     console.log(`📦 Все документы сгенерированы. Статус заказа ${orderId} → 'completed'`);
     const buffers = await generateTildaBuffers(orderId);
-    console.log('📨 Отправляем все бизнес-планы администраторам...');
+    console.log('📨 Отправляем все документы администраторам...');
     await sendToAdminsOnly(buffers, email);
-    console.log('✅ Все планы отправлены администраторам');
+    console.log('✅ Все документы отправлены администраторам');
   }
 }
 async function startExplanatoryGeneration({ documentId, basePrompt }) {
