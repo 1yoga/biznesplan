@@ -21,7 +21,7 @@ function makeParagraph(text, options = {}) {
     });
 }
 
-async function generateWordForExplanatory(data) {
+async function generateWordForExplanatory(data, gptResponse = '') {
     const {
         organization = '',
         recipient = '',
@@ -48,7 +48,7 @@ async function generateWordForExplanatory(data) {
 
                     // Основной текст
                     makeParagraph(`Дата инцидента: ${incidentDate}`),
-                    makeParagraph(description),
+                    makeParagraph(gptResponse || description),
 
                     // Подпись и дата (вручную)
                     makeParagraph('', { noIndent: true }),
