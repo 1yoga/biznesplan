@@ -48,6 +48,8 @@ const systemPromptForm2 = `Ты профессиональный бизнес-к
 Каждую из 3-х  идей распиши подробно.
 `
 
+const systemPromptExplanatory = "Ты квалифицированный специалист с юридическим образованием, имеющий многолетний стаж работы с документами. Прекрасно знаешь ГОСТы и их тонкости, а потому можешь грамотно составить любой официальный документ для заказчика"
+
 const TILDA_STRUCTURE = [
   '1. Краткое резюме',
   '2. Цели и задачи проекта',
@@ -74,4 +76,4 @@ const TILDA_STRUCTURE = [
   { title: 'Социальный эффект', target_word_count: 400 }
 ];
 
-module.exports = { STRUCTURES, systemPromptForm1, systemPromptForm2, TILDA_STRUCTURE, sectionTitles };
+module.exports = { STRUCTURES, systemPromptForm1, systemPromptForm2, TILDA_STRUCTURE, sectionTitles, systemPromptExplanatory };

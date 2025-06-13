@@ -1,7 +1,37 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+
+        function sendEvent(goal) {
+            if (window.ym) ym(101917287, 'reachGoal', goal);
+        }
+
+        function tryOpenInNewTab(url, maxAttempts = 3) {
+            let attempts = 0;
+
+            function attemptOpen() {
+                const newWindow = window.open(url, '_blank');
+                if (newWindow) {
+                    console.log('✅ Окно оплаты успешно открыто');
+                    sendEvent('paymentUrlReceived');
+                    return;
+                }
+
+                attempts++;
+                if (attempts < maxAttempts) {
+                    console.warn(`❗ Попытка №${attempts + 1} открытия окна`);
+                    setTimeout(attemptOpen, 1500);
+                } else {
+                    console.error('❌ Не удалось открыть окно оплаты');
+                    sendEvent('popupBlocked');
+                    alert('Пожалуйста, разрешите всплывающие окна для оплаты.');
+                }
+            }
+
+            attemptOpen();
+        }
+
         // --------------------- Form 2 ---------------------
-        const rec2 = document.querySelector('#rec1010945101');
+        const rec2 = document.querySelector('#rec1055299571');
         if (rec2) {
             const form2 = rec2.querySelector('form');
             const button2 = rec2.querySelector('button.t-submit');
@@ -15,6 +45,7 @@
                         const required = [email, location];
                         const hasEmpty = required.some(f => !f || f.value.trim() === '');
                         if (hasEmpty) {
+                            sendEvent('fieldsEmpty');
                             console.warn('❌ Обязательные поля не заполнены');
                             return;
                         }
@@ -22,6 +53,7 @@
                         const emailVal = email.value.trim();
                         const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
                         if (!isEmail) {
+                            sendEvent('emailInvalid');
                             email.setCustomValidity('Укажите корректный email');
                             email.reportValidity();
                             return;
@@ -34,10 +66,13 @@
                             location: location.value.trim(),
                             additionalInfo: form2.querySelector('textarea[name="additionalInfo"]')?.value.trim() || '',
                             ownInvestments: form2.querySelector('input[name="ownInvestment"]')?.value || '0',
-                            formname: 'form3',
+                            formname: 'form2',
                             price: '1490.00',
-                            source_url: 'https://biznesplan.online/spasibo_za_oplatu'
+                            source_url: 'https://biznesplan.online/spasibo_za_oplatu',
+                            page: 'biznes_plan_soc_kontrakt'
                         };
+
+                        sendEvent('paymentAttempt');
 
                         fetch('https://gpt-plan-api-production.up.railway.app/tilda-submit', {
                             method: 'POST',
@@ -47,14 +82,17 @@
                             .then(res => res.json())
                             .then(result => {
                                 if (result?.confirmation_url) {
+                                    sendEvent('paymentUrlReceived');
                                     console.log('✅ Переход к оплате...');
-                                    window.location.href = result.confirmation_url;
+                                    tryOpenInNewTab(result.confirmation_url);
                                 } else {
+                                    sendEvent('paymentUrlFailed');
                                     console.error('❌ Ошибка генерации:', result);
                                     alert('Ошибка генерации. Попробуйте позже.');
                                 }
                             })
                             .catch(err => {
+                                sendEvent('paymentError');
                                 console.error('❌ Ошибка отправки:', err);
                                 alert('Ошибка соединения. Попробуйте позже.');
                             });
@@ -64,7 +102,7 @@
         }
 
         // --------------------- Form 1 ---------------------
-        const rec1 = document.querySelector('#rec1010945576');
+        const rec1 = document.querySelector('#rec1055299556');
         if (rec1) {
             const form1 = rec1.querySelector('form');
             const button1 = rec1.querySelector('button.t-submit');
@@ -80,6 +118,7 @@
                         const required = [email, location, businessIdea, impactDescription];
                         const hasEmpty = required.some(f => !f || f.value.trim() === '');
                         if (hasEmpty) {
+                            sendEvent('fieldsEmpty');
                             console.warn('❌ Обязательные поля не заполнены');
                             return;
                         }
@@ -87,6 +126,7 @@
                         const emailVal = email.value.trim();
                         const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
                         if (!isEmail) {
+                            sendEvent('emailInvalid');
                             email.setCustomValidity('Укажите корректный email');
                             email.reportValidity();
                             return;
@@ -97,18 +137,19 @@
                             email: emailVal,
                             fullName: form1.querySelector('input[name="fullName"]')?.value.trim() || '',
                             location: location.value.trim(),
-                            requestedAmount: form1.querySelector('input[name="requestedAmount"]')?.value.trim() || '',
-                            ownInvestments: form1.querySelector('input[name="ownInvestment"]')?.value.trim() || '',
+                            ownInvestments: form1.querySelector('input[name="ownInvestment"]')?.value || '0',
                             assetsDescription: form1.querySelector('textarea[name="assetsDescription"]')?.value.trim() || '',
                             advantages: form1.querySelector('textarea[name="advantages"]')?.value.trim() || '',
                             businessIdea: businessIdea.value.trim(),
                             impactDescription: impactDescription.value.trim(),
                             additionalInfo: form1.querySelector('textarea[name="additionalInfo"]')?.value.trim() || '',
-                            purpose: form1.querySelector('select[name="purpose"]')?.value || '',
-                            formname: 'form4',
+                            formname: 'form1',
                             price: '990.00',
-                            source_url: 'https://biznesplan.online/spasibo_za_oplatu'
+                            source_url: 'https://biznesplan.online/spasibo_za_oplatu',
+                            page: 'biznes_plan_soc_kontrakt'
                         };
+
+                        sendEvent('paymentAttempt');
 
                         fetch('https://gpt-plan-api-production.up.railway.app/tilda-submit', {
                             method: 'POST',
@@ -118,14 +159,17 @@
                             .then(res => res.json())
                             .then(result => {
                                 if (result?.confirmation_url) {
+                                    sendEvent('paymentUrlReceived');
                                     console.log('✅ Переход к оплате...');
-                                    window.location.href = result.confirmation_url;
+                                    tryOpenInNewTab(result.confirmation_url);
                                 } else {
+                                    sendEvent('paymentUrlFailed');
                                     console.error('❌ Ошибка генерации:', result);
                                     alert('Ошибка генерации. Попробуйте позже.');
                                 }
                             })
                             .catch(err => {
+                                sendEvent('paymentError');
                                 console.error('❌ Ошибка отправки:', err);
                                 alert('Ошибка соединения. Попробуйте позже.');
                             });
@@ -135,4 +179,3 @@
         }
     });
 </script>
----

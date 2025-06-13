@@ -10,7 +10,7 @@ const generatePromptForm1 = require('./services/tilda/promptForm1');
 const generatePromptForm2 = require('./services/tilda/promptForm2');
 const generatePromptForm3 = require('./services/tilda/promptForm3');
 const generatePromptForm4 = require('./services/tilda/promptForm4');
-const { TILDA_STRUCTURE, systemPromptForm1, systemPromptForm2, sectionTitles} = require('./services/consts');
+const { TILDA_STRUCTURE, systemPromptForm1, systemPromptForm2, sectionTitles, systemPromptExplanatory} = require('./services/consts');
 
 const YooKassa = require('yookassa');
 const {sendFull, sendToAdminsOnly} = require("./services/mailer");
@@ -130,6 +130,69 @@ app.post('/yookassa-webhook-tilda', express.json(), async (req, res) => {
     return res.sendStatus(500);
   }
 });
+
+app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (req, res) => {
+  const data = req.body;
+  console.log('📥 Получены данные формы объяснительной:', data);
+
+  const orderId = uuidv4();
+
+  if (!data.email || !data.docType || !data.fullName || !data.description) {
+    console.warn('❌ Не хватает обязательных полей');
+    return res.status(400).json({ error: 'Заполните все обязательные поля' });
+  }
+
+  await db.insert(orders).values({
+    id: orderId,
+    email: data.email,
+    form_type: 'explanatory',
+    form_data: data,
+    status: 'pending',
+  });
+
+  const returnUrl = data.source_url || 'https://boxinfox.ru/spasibo_obyasnitelnaya';
+  const amount = data.price || '299.00';
+
+  try {
+    console.log('💳 Создаём платёж на сумму:', amount);
+    const paymentPayload = buildPaymentParams({ amount, returnUrl, email: data.email, orderId });
+    const payment = await yookassa.createPayment(paymentPayload, orderId);
+
+    console.log('✅ Платёж создан:', payment.id);
+
+    await db.update(orders).set({
+      yookassa_payment_id: payment.id,
+      yookassa_status: payment.status,
+    }).where(eq(orders.id, orderId));
+
+    // Генерация объяснительной — один документ
+    const documentId = uuidv4();
+
+    const prompt = `Составь объяснительную записку от имени сотрудника ${data.fullName}, занимающего должность ${data.position} в организации ${data.organization}, получателю: ${data.recipient}. Событие произошло ${data.incidentDate}. Причина — ${data.reason}. Подробности: ${data.description}`;
+
+    await db.insert(documents).values({
+      id: documentId,
+      order_id: orderId,
+      gpt_prompt: prompt,
+      doc_type: 'explanatory',
+      status: 'pending'
+    });
+
+    await startSectionGeneration({
+      documentId,
+      basePrompt: prompt,
+      systemPrompt: systemPromptExplanatory
+    });
+
+    return res.json({ confirmation_url: payment.confirmation.confirmation_url });
+
+  } catch (err) {
+    console.error('❌ Ошибка при создании оплаты или генерации объяснительной:', err);
+    await db.update(orders).set({ status: 'error' }).where(eq(orders.id, orderId));
+    return res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
 
 async function safeSendFull(docx, email, retries = 3, delayMs = 3000) {
   for (let i = 0; i < retries; i++) {
