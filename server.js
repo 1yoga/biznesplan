@@ -415,7 +415,7 @@ async function generateTildaBuffers(orderId) {
             console.warn(`❌ Заказ ${orderId} не найден`);
             return [];
           }
-          return await generateWordForExplanatory(order.form_data);
+          return await generateWordForExplanatory(order.form_data, clean);
         }
         return await generateWord(clean, null, TILDA_STRUCTURE);
       })
