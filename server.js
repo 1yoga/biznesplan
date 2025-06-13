@@ -19,15 +19,17 @@ const {preprocessText, buildPaymentParams, safeGptCall} = require("./services/ut
 const { OpenAI } = require('openai')
 const generateWordForExplanatory = require("./services/generateWordForExplanatory");
 
-const yookassa = new YooKassa({
-  shopId: process.env.YOOKASSA_SHOP_ID,
-  secretKey: process.env.YOOKASSA_SECRET_KEY,
-});
-
 const app = express();
 
 app.use(cors({
-  origin: 'https://biznesplan.online',
+  origin: function (origin, callback) {
+    const allowedOrigins = ['https://biznesplan.online', 'https://boxinfox.ru'];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['POST'],
   allowedHeaders: ['Content-Type'],
   optionsSuccessStatus: 204
@@ -73,6 +75,11 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
     console.log('💳 Сумма платежа:', amount);
 
     const paymentPayload = buildPaymentParams({ amount, returnUrl, email: data.email, orderId });
+    const yookassa = new YooKassa({
+      shopId: process.env.YOOKASSA_SHOP_ID_PLAN,
+      secretKey: process.env.YOOKASSA_SECRET_KEY_PLAN,
+    });
+
     const payment = await yookassa.createPayment(paymentPayload, orderId);
 
     console.log('✅ Платёж успешно создан:', payment.id);
@@ -155,6 +162,10 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
   try {
     console.log('💳 Создаём платёж на сумму:', amount);
     const paymentPayload = buildPaymentParams({ amount, returnUrl, email: data.email, orderId });
+    const yookassa = new YooKassa({
+      shopId: process.env.YOOKASSA_SHOP_ID_FORMS,
+      secretKey: process.env.YOOKASSA_SECRET_KEY_FORMS,
+    });
     const payment = await yookassa.createPayment(paymentPayload, orderId);
 
     console.log('✅ Платёж создан:', payment.id);
