@@ -266,6 +266,7 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
     if (
         ['form1', 'form2', 'form3', 'form4'].includes(data.formname)
     ) {
+      console.log(data.formname)
       await startSectionGeneration({
         documentId,
         basePrompt: prompt,
@@ -391,6 +392,7 @@ async function startSectionGeneration({ documentId, basePrompt, systemPrompt }) 
 }
 
 async function generateTildaBuffers(orderId) {
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
   const docs = await db.select().from(documents).where(eq(documents.order_id, orderId));
   const buffers = await Promise.all(
     docs
@@ -398,7 +400,11 @@ async function generateTildaBuffers(orderId) {
       .map(async doc => {
         const clean = preprocessText(doc.gpt_response);
         if (doc.doc_type === 'explanatory') {
-          return await generateWordForExplanatory(JSON.parse(doc.form_data));
+          if (!order) {
+            console.warn(`❌ Заказ ${orderId} не найден`);
+            return [];
+          }
+          return await generateWordForExplanatory(order.form_data);
         }
         return await generateWord(clean, null, TILDA_STRUCTURE);
       })
