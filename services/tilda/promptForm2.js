@@ -1,5 +1,5 @@
 const { buildIdeasPrompt, buildPlanPrompt } = require("../utils");
-const generatePlanTilda = require('../../services/tilda/openai');
+const generatePlanTilda = require('../openai');
 
 async function generatePromptForm2(data) {
   console.log('🚀 Старт генерации promptов для form2...');

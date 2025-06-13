@@ -10,16 +10,15 @@ const generatePromptForm1 = require('./services/tilda/promptForm1');
 const generatePromptForm2 = require('./services/tilda/promptForm2');
 const generatePromptForm3 = require('./services/tilda/promptForm3');
 const generatePromptForm4 = require('./services/tilda/promptForm4');
+const generatePromptForExplanatory = require('./services/explanatory/generatePromptForExplanatory');
 const { TILDA_STRUCTURE, systemPromptForm1, systemPromptForm2, sectionTitles, systemPromptExplanatory} = require('./services/consts');
 
 const YooKassa = require('yookassa');
 const {sendFull, sendToAdminsOnly} = require("./services/mailer");
-const {preprocessText, buildPaymentParams} = require("./services/utils");
+const {preprocessText, buildPaymentParams, safeGptCall} = require("./services/utils");
 const { OpenAI } = require('openai')
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  organization: process.env.OPENAI_ORG_ID
-})
+const generateWordForExplanatory = require("./services/generateWordForExplanatory");
+
 const yookassa = new YooKassa({
   shopId: process.env.YOOKASSA_SHOP_ID,
   secretKey: process.env.YOOKASSA_SECRET_KEY,
@@ -135,7 +134,7 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
   const data = req.body;
   console.log('📥 Получены данные формы объяснительной:', data);
 
-  /*const orderId = uuidv4();
+  const orderId = uuidv4();
 
   if (!data.email || !data.docType || !data.fullName || !data.description) {
     console.warn('❌ Не хватает обязательных полей');
@@ -165,32 +164,15 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
       yookassa_status: payment.status,
     }).where(eq(orders.id, orderId));
 
-    // Генерация объяснительной — один документ
-    const documentId = uuidv4();
-
-    const prompt = `Составь объяснительную записку от имени сотрудника ${data.fullName}, занимающего должность ${data.position} в организации ${data.organization}, получателю: ${data.recipient}. Событие произошло ${data.incidentDate}. Причина — ${data.reason}. Подробности: ${data.description}`;
-
-    await db.insert(documents).values({
-      id: documentId,
-      order_id: orderId,
-      gpt_prompt: prompt,
-      doc_type: 'explanatory',
-      status: 'pending'
-    });
-
-    await startSectionGeneration({
-      documentId,
-      basePrompt: prompt,
-      systemPrompt: systemPromptExplanatory
-    });
+    startSectionGenerationForMultipleDocs({ orderId, email: data.email, data }).catch(console.error);
 
     return res.json({ confirmation_url: payment.confirmation.confirmation_url });
 
   } catch (err) {
-    console.error('❌ Ошибка при создании оплаты или генерации объяснительной:', err);
+    console.error('❌ Ошибка создания оплаты или записи заказа:', err);
     await db.update(orders).set({ status: 'error' }).where(eq(orders.id, orderId));
     return res.status(500).json({ error: 'Ошибка сервера' });
-  }*/
+  }
 });
 
 
@@ -261,6 +243,10 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
       prompts = await generatePromptForm4(data);
       break;
 
+    case 'explanatory':
+      prompts = await generatePromptForExplanatory(data);
+      break;
+
     default:
       throw new Error(`Неизвестное имя формы: ${data.formname}`);
   }
@@ -273,15 +259,25 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
       id: documentId,
       order_id: orderId,
       gpt_prompt: prompt,
-      doc_type: 'business_plan',
+      doc_type: data.page,
       status: 'pending'
     });
 
-    await startSectionGeneration({
-      documentId,
-      basePrompt: prompt,
-      systemPrompt: systemPromptForm1
-    });
+    if (
+        ['form1', 'form2', 'form3', 'form4'].includes(data.formname)
+    ) {
+      await startSectionGeneration({
+        documentId,
+        basePrompt: prompt,
+        systemPrompt: systemPromptForm1
+      });
+    }
+    else if(data.formname === 'explanatory'){
+      await startExplanatoryGeneration({
+        documentId,
+        basePrompt: prompt
+      });
+    }
   }
 
   const docsArray = await db.select().from(documents).where(eq(documents.order_id, orderId));
@@ -294,6 +290,39 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
     console.log('✅ Все планы отправлены администраторам');
   }
 }
+async function startExplanatoryGeneration({ documentId, basePrompt }) {
+  try {
+    const messages = [
+      { role: 'system', content: systemPromptExplanatory },
+      { role: 'user', content: basePrompt }
+    ];
+
+    const result = await safeGptCall({
+      messages,
+      max_tokens: 2048
+    });
+
+    const response = result.choices?.[0]?.message?.content || 'Ошибка генерации';
+    const wordCount = response.split(/\s+/).filter(Boolean).length;
+
+    await db.update(documents).set({
+      gpt_response: response,
+      word_count: wordCount,
+      status: 'completed',
+      updated_at: new Date()
+    }).where(eq(documents.id, documentId));
+
+    console.log(`📝 Объяснительная сгенерирована (${wordCount} слов)`);
+
+  } catch (err) {
+    console.error('❌ Ошибка генерации объяснительной:', err);
+    await db.update(documents).set({
+      status: 'error',
+      updated_at: new Date()
+    }).where(eq(documents.id, documentId));
+  }
+}
+
 
 async function startSectionGeneration({ documentId, basePrompt, systemPrompt }) {
   const sectionsToInsert = sectionTitles.map((s, idx) => {
@@ -361,32 +390,6 @@ async function startSectionGeneration({ documentId, basePrompt, systemPrompt }) 
   }).where(eq(documents.id, documentId));
 }
 
-async function safeGptCall({ messages, max_tokens = 8192, temperature = 0.7 }) {
-  let retries = 5;
-
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages,
-        temperature,
-        max_tokens
-      });
-    } catch (err) {
-      if (err.code === 'rate_limit_exceeded') {
-        const retryAfter = err.headers?.['retry-after'] || 30;
-        const waitTime = Number(retryAfter) * 1000;
-        console.warn(`🚦 Rate limit. Ждём ${waitTime / 1000} сек...`);
-        await delay(waitTime);
-      } else {
-        throw err; // если ошибка не связана с лимитом — пробрасываем
-      }
-    }
-  }
-
-  throw new Error('💥 Превышено количество попыток запроса к GPT (rate limit)');
-}
-
 async function generateTildaBuffers(orderId) {
   const docs = await db.select().from(documents).where(eq(documents.order_id, orderId));
   const buffers = await Promise.all(
@@ -394,6 +397,9 @@ async function generateTildaBuffers(orderId) {
       .filter(doc => doc.status === 'completed' && doc.gpt_response)
       .map(async doc => {
         const clean = preprocessText(doc.gpt_response);
+        if (doc.doc_type === 'explanatory') {
+          return await generateWordForExplanatory(JSON.parse(doc.form_data));
+        }
         return await generateWord(clean, null, TILDA_STRUCTURE);
       })
   );

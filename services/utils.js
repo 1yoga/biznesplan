@@ -1,3 +1,12 @@
+require('dotenv').config();
+const {OpenAI} = require("openai");
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  organization: process.env.OPENAI_ORG_ID
+})
+
+
 const ADMIN_EMAILS = (process.env.MAIL_TO || '')
   .split(',')
   .map(email => email.trim())
@@ -288,5 +297,36 @@ function buildPaymentParams({ amount, returnUrl, email, orderId }) {
   };
 }
 
+async function safeGptCall({ messages, max_tokens = 8192, temperature = 0.7 }) {
+  let retries = 5;
 
-module.exports = { ADMIN_EMAILS, buildIdeasPrompt, buildPlanPrompt, extractPreviewBlocks, preprocessText, buildPaymentParams, buildPlanPrompt2, buildIdeasPrompt2 };
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages,
+        temperature,
+        max_tokens
+      });
+    } catch (err) {
+      if (err.code === 'rate_limit_exceeded') {
+        const retryAfter = err.headers?.['retry-after'] || 30;
+        const waitTime = Number(retryAfter) * 1000;
+        console.warn(`🚦 Rate limit. Ждём ${waitTime / 1000} сек...`);
+        await delay(waitTime);
+      } else {
+        throw err; // если ошибка не связана с лимитом — пробрасываем
+      }
+    }
+  }
+
+  throw new Error('💥 Превышено количество попыток запроса к GPT (rate limit)');
+}
+
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
+module.exports = { ADMIN_EMAILS, buildIdeasPrompt, buildPlanPrompt, safeGptCall, preprocessText, buildPaymentParams, buildPlanPrompt2, buildIdeasPrompt2 };

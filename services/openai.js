@@ -1,5 +1,5 @@
 const { OpenAI } = require('openai')
-const {systemPromptForm1, systemPromptForm2, systemPromptForm3} = require("../consts");
+const {systemPromptForm1, systemPromptForm2, systemPromptForm3} = require("./consts");
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   organization: process.env.OPENAI_ORG_ID
