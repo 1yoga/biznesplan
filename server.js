@@ -192,6 +192,15 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
   }
 });
 
+app.post('/tilda-webhook', express.urlencoded({ extended: true }), async (req, res) => {
+  const data = req.body;
+
+  console.log('📥 Получен Webhook от Tilda:');
+  console.dir(data, { depth: null });
+
+  res.status(200).send('OK');
+});
+
 
 async function safeSendFull(docx, email, formType = 'plan', retries = 3, delayMs = 3000) {
   for (let i = 0; i < retries; i++) {
