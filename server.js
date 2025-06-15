@@ -196,6 +196,8 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
   const data = req.body;
   console.log('📥 Получены данные формы от Tilda:', data);
 
+  return res.status(200)
+
   if (!data.email) {
     console.warn('❌ Нет email в данных формы');
     return res.status(400).json({ error: 'Не указан email' });
