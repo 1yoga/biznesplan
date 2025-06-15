@@ -192,7 +192,7 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
   }
 });
 
-app.post('/tilda-webhook', express.urlencoded({ extended: true }), async (req, res) => {
+app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (req, res) => {
   const data = req.body;
 
   console.log('📥 Получен Webhook от Tilda:');
