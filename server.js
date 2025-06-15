@@ -201,7 +201,7 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
     return res.status(400).json({ error: 'Не указан email' });
   }
 
-  if (data.formname !== 'form1' && data.formname !== 'form2' && data.formname !== 'form3' && data.formname !== 'form4') {
+  if (data.form !== 'form1' && data.form !== 'form2' && data.form !== 'form3' && data.form !== 'form4') {
     console.warn('❌ Некорректный formname:', data.formname);
     return res.status(400).json({ error: 'Некорректный formname' });
   }
