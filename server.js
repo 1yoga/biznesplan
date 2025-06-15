@@ -193,7 +193,7 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
 });
 
 app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (req, res) => {
-  res.status(200).send('OK');
+  return res.status(200).send('OK');
   const data = req.body;
   console.log('📥 Получены данные формы от Tilda:', data);
 
