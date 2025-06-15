@@ -202,8 +202,8 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
   }
 
   if (data.form !== 'form1' && data.form !== 'form2' && data.form !== 'form3' && data.form !== 'form4') {
-    console.warn('❌ Некорректный formname:', data.formname);
-    return res.status(400).json({ error: 'Некорректный formname' });
+    console.warn('❌ Некорректный form:', data.form);
+    return res.status(400).json({ error: 'Некорректный form' });
   }
 
   const orderId = uuidv4();
@@ -214,7 +214,7 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
     await db.insert(orders).values({
       id: orderId,
       email: data.email,
-      form_type: data.formname,
+      form_type: data.form,
       form_data: data,
       status: 'pending',
       is_paid: true,
@@ -285,7 +285,7 @@ async function trySendTildaOrderById(orderId, retries = 100, intervalMs = 30000)
 async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
   let prompts;
 
-  switch (data.formname) {
+  switch (data.form) {
     case 'form1':
       prompts = [generatePromptForm1(data)];
       break;
@@ -307,7 +307,7 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
       break;
 
     default:
-      throw new Error(`Неизвестное имя формы: ${data.formname}`);
+      throw new Error(`Неизвестное имя формы: ${data.form}`);
   }
 
   for (let i = 0; i < prompts.length; i++) {
@@ -323,16 +323,16 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
     });
 
     if (
-        ['form1', 'form2', 'form3', 'form4'].includes(data.formname)
+        ['form1', 'form2', 'form3', 'form4'].includes(data.form)
     ) {
-      console.log(data.formname)
+      console.log(data.form)
       await startSectionGeneration({
         documentId,
         basePrompt: prompt,
         systemPrompt: systemPromptForm1
       });
     }
-    else if(data.formname === 'explanatory'){
+    else if(data.form === 'explanatory'){
       await startExplanatoryGeneration({
         documentId,
         basePrompt: prompt
