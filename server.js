@@ -194,11 +194,44 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
 
 app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (req, res) => {
   const data = req.body;
+  console.log('📥 Получены данные формы от Tilda:', data);
 
-  console.log('📥 Получен Webhook от Tilda:');
-  console.dir(data, { depth: null });
+  if (!data.email) {
+    console.warn('❌ Нет email в данных формы');
+    return res.status(400).json({ error: 'Не указан email' });
+  }
 
-  res.status(200).send('OK');
+  if (data.formname !== 'form1' && data.formname !== 'form2' && data.formname !== 'form3' && data.formname !== 'form4') {
+    console.warn('❌ Некорректный formname:', data.formname);
+    return res.status(400).json({ error: 'Некорректный formname' });
+  }
+
+  const orderId = uuidv4();
+
+  console.log('📝 Создаём заказ с ID:', orderId);
+
+  try {
+    await db.insert(orders).values({
+      id: orderId,
+      email: data.email,
+      form_type: data.formname,
+      form_data: data,
+      status: 'pending',
+      is_paid: true,
+      paid_at: new Date(),
+    });
+
+    // 🚀 Запускаем генерацию
+    await startSectionGenerationForMultipleDocs({ orderId, email: data.email, data });
+    await trySendTildaOrderById(orderId);
+
+    console.log(`✅ Заявка ${orderId} обработана и генерация запущена`);
+    return res.status(200).json({ status: 'started', orderId });
+
+  } catch (err) {
+    console.error('❌ Ошибка обработки заявки:', err);
+    return res.status(500).json({ error: 'Ошибка сервера' });
+  }
 });
 
 
