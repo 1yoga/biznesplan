@@ -215,8 +215,7 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
 });
 
 app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), (req, res) => {
-  return res.status(200)
-
+  res.sendStatus(200);
 });
 
 async function safeSendFull(docx, email, formType = 'plan', retries = 3, delayMs = 3000) {
