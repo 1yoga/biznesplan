@@ -104,40 +104,59 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
 });
 
 app.post('/yookassa-webhook-tilda', express.json(), async (req, res) => {
-  const data = req.body;
-  console.log('📥 Получены данные от Yookassa:', data);
+  console.log('📥 Получены данные от Yookassa:', req.body);
+
+  const body = req.body;
+
+  if (!body || body.event !== 'payment.succeeded') {
+    return res.sendStatus(200); // игнорируем ненужные эвенты
+  }
+
+  const payment = body.object;
+  const orderId = payment.metadata?.tilda_orderid; // ⚠️ именно TILDA_ORDERID
+
+  if (!orderId) {
+    console.warn('❌ Нет tilda_orderid в metadata');
+    return res.status(400).send('❌ Нет tilda_orderid');
+  }
+
   try {
-    const body = req.body;
-    if (body.event !== 'payment.succeeded') return res.sendStatus(200);
+    const [order] = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1);
 
-    const payment = body.object;
-    const orderId = payment.metadata?.orderId;
-
-    if (!orderId) return res.status(400).send('❌ Нет orderId в metadata');
-
-    const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
     if (!order) {
       console.warn(`❌ Заказ не найден по ID: ${orderId}`);
       return res.sendStatus(404);
     }
 
-    if (order.yookassa_status === 'succeeded') return res.sendStatus(200);
+    if (order.yookassa_status === 'succeeded') {
+      console.log(`ℹ️ Оплата по заказу ${orderId} уже подтверждена`);
+      return res.sendStatus(200);
+    }
 
     const now = new Date();
 
-    await db.update(orders).set({
-      yookassa_status: 'succeeded',
-      is_paid: true,
-      paid_at: now,
-      updated_at: now,
-    }).where(eq(orders.id, orderId));
+    await db
+        .update(orders)
+        .set({
+          yookassa_status: 'succeeded',
+          is_paid: true,
+          paid_at: now,
+          updated_at: now,
+        })
+        .where(eq(orders.id, orderId));
 
-    console.log(`✅ Оплата по заказу ${orderId} подтверждена`);
+    console.log(`✅ Оплата по заказу ${orderId} подтверждена. Отправляем.`);
+
     await trySendTildaOrderById(orderId);
 
     return res.sendStatus(200);
+
   } catch (err) {
-    console.error('❌ Ошибка в /yookassa-webhook:', err);
+    console.error('❌ Ошибка при обработке Yookassa webhook:', err);
     return res.sendStatus(500);
   }
 });
