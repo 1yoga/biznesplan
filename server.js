@@ -18,8 +18,40 @@ const {sendFull, sendToAdminsOnly} = require("./services/mailer");
 const {preprocessText, buildPaymentParams, safeGptCall} = require("./services/utils");
 const { OpenAI } = require('openai')
 const generateWordForExplanatory = require("./services/generateWordForExplanatory");
+const {logs} = require("./schema");
 
 const app = express();
+
+const originalLog = console.log;
+const originalWarn = console.warn;
+const originalError = console.error;
+
+function logToDb(level, args) {
+  const message = args.map(a => {
+    if (typeof a === 'object') return JSON.stringify(a);
+    return String(a);
+  }).join(' ');
+
+  db.insert(logs).values({
+    level,
+    message
+  }).catch(e => originalError('❌ Ошибка записи в логи БД:', e));
+}
+
+console.log = (...args) => {
+  originalLog(...args);
+  logToDb('info', args);
+};
+
+console.warn = (...args) => {
+  originalWarn(...args);
+  logToDb('warn', args);
+};
+
+console.error = (...args) => {
+  originalError(...args);
+  logToDb('error', args);
+};
 
 app.use(cors({
   origin: function (origin, callback) {
