@@ -226,11 +226,11 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
 
   // 🛑 Проверка — не обрабатываем повторно
   const existing = await db.query.orders.findFirst({
-    where: (o, { eq }) => eq(o.external_id, externalOrderId)
+    where: (o, { eq }) => eq(o.external_id, orderId)
   });
 
   if (existing) {
-    console.warn(`⚠️ Заказ с external_id=${externalOrderId} уже существует. Прерываем.`);
+    console.warn(`⚠️ Заказ с external_id=${orderId} уже существует. Прерываем.`);
     return;
   }
 
