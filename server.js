@@ -113,23 +113,22 @@ app.post('/yookassa-webhook-tilda', express.json(), async (req, res) => {
   }
 
   const payment = body.object;
-  const orderId = payment.metadata?.tilda_orderid; // ⚠️ именно TILDA_ORDERID
+  const orderId = payment.metadata?.tilda_orderid;
 
   if (!orderId) {
     console.warn('❌ Нет tilda_orderid в metadata');
     return res.status(400).send('❌ Нет tilda_orderid');
   }
 
-
   try {
     const [order] = await db
         .select()
         .from(orders)
-        .where(eq(orders.id, orderId))
+        .where(eq(orders.external_id, orderId)) // <-- именно external_id
         .limit(1);
 
     if (!order) {
-      console.warn(`❌ Заказ не найден по ID: ${orderId}`);
+      console.warn(`❌ Заказ не найден по external_id: ${orderId}`);
       return res.sendStatus(404);
     }
 
@@ -148,11 +147,11 @@ app.post('/yookassa-webhook-tilda', express.json(), async (req, res) => {
           paid_at: now,
           updated_at: now,
         })
-        .where(eq(orders.id, orderId));
+        .where(eq(orders.id, order.id)); // тут можно по ID, потому что мы его уже получили
 
     console.log(`✅ Оплата по заказу ${orderId} подтверждена. Отправляем.`);
 
-    await trySendTildaOrderById(orderId);
+    await trySendTildaOrderById(order.id);
 
     return res.sendStatus(200);
 
@@ -160,6 +159,7 @@ app.post('/yookassa-webhook-tilda', express.json(), async (req, res) => {
     console.error('❌ Ошибка при обработке Yookassa webhook:', err);
     return res.sendStatus(500);
   }
+
 });
 
 app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (req, res) => {
@@ -223,64 +223,65 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
     return res.status(400).json({ error: 'Не указан email' });
   }
 
-  if (data.form !== 'form1' && data.form !== 'form2' && data.form !== 'form3' && data.form !== 'form4') {
-    console.warn('❌ Некорректный form:', data.formname);
+  if (!['form1', 'form2', 'form3', 'form4'].includes(data.form)) {
+    console.warn('❌ Некорректный form:', data.form);
     return res.status(400).json({ error: 'Некорректный form' });
   }
 
-  let orderId;
+  let externalId;
   let paymentId;
 
   try {
     const parsedPayment = typeof data.payment === 'string' ? JSON.parse(data.payment) : data.payment;
-    orderId = parsedPayment?.orderid;
+    externalId = parsedPayment?.orderid;
     paymentId = parsedPayment?.systranid;
   } catch (err) {
     console.warn('⚠️ Не удалось распарсить поле payment:', data.payment);
   }
 
-  if (!orderId) {
+  if (!externalId) {
     console.warn('❌ Нет external orderId');
-    return;
+    return res.status(400).json({ error: 'Не указан external_id' });
   }
 
-  // 🛑 Проверка — не обрабатываем повторно
+  // 🛑 Проверка — заказ уже создан
   const existing = await db
       .select()
       .from(orders)
-      .where(eq(orders.order_id, orderId))
+      .where(eq(orders.external_id, externalId))
       .limit(1);
 
   if (existing.length > 0) {
-    console.warn(`⚠️ Заказ с order_id=${orderId} уже существует. Прерываем.`);
-    return;
+    console.warn(`⚠️ Заказ с external_id=${externalId} уже существует. Прерываем.`);
+    return res.status(200).json({ status: 'already exists', orderId: externalId });
   }
 
-  console.log('📝 Создаём заказ с ID:', orderId);
+  const orderId = uuidv4();
+  console.log(`📝 Создаём заказ ${orderId} для external_id=${externalId}`);
 
   await db.insert(orders).values({
     id: orderId,
+    external_id: externalId,
     email: data.email,
     form_type: data.formname,
     form_data: data,
     status: 'pending',
     yookassa_payment_id: paymentId,
-    yookassa_status: 'pending'
+    yookassa_status: 'pending',
   });
 
   try {
-    startSectionGenerationForMultipleDocs({ orderId, email: data.email, data }).catch(console.error);
+    startSectionGenerationForMultipleDocs({ orderId: orderId, email: data.email, data }).catch(console.error);
 
-    console.log(`✅ Заявка ${orderId} обработана и генерация запущена`);
-    return res.status(200).json({ status: 'started', orderId });
+    console.log(`✅ Заявка ${externalId} обработана, ID = ${orderId}`);
+    return res.status(200).json({ status: 'started', orderId: orderId });
 
   } catch (err) {
-    console.error('❌ Ошибка создания оплаты или записи заказа:', err);
+    console.error('❌ Ошибка при генерации:', err);
     await db.update(orders).set({ status: 'error' }).where(eq(orders.id, orderId));
     return res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
-
 
 async function safeSendFull(docx, email, formType = 'plan', retries = 3, delayMs = 3000) {
   for (let i = 0; i < retries; i++) {
