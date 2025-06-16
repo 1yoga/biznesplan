@@ -6,7 +6,7 @@ module.exports = function generatePromptForm3(data) {
 
     if (data.fullName) parts.push(`- ФИО заказчика: ${data.fullName}`);
     if (data.location) parts.push(`- Город или регион: ${data.location}`);
-    if (data.ownInvestments) parts.push(`- Вложения в бизнес: ${data.ownInvestments} руб.`);
+    if (data.ownInvestment) parts.push(`- Вложения в бизнес: ${data.ownInvestment} руб.`);
     if (data.assetsDescription) parts.push(`- Неденежные активы: ${data.assetsDescription}`);
     if (data.businessIdea) parts.push(`-Описание идеи: ${data.businessIdea}`);
     if (data.advantages) parts.push(`- Конкурентные преимущества: ${data.advantages}`);
