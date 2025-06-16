@@ -42,4 +42,11 @@ const sections = pgTable('sections', {
   updated_at: timestamp('updated_at').defaultNow(),
 });
 
-module.exports = { orders, documents, sections };
+const logs = pgTable('logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  level: text('level').notNull(),
+  message: text('message').notNull(),
+  timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow()
+});
+
+module.exports = { orders, documents, sections, logs };
