@@ -1,6 +1,6 @@
 const { pgTable, text, jsonb, uuid, timestamp, boolean, integer} = require('drizzle-orm/pg-core');
 
-const orders = pgTable('orders', {
+export const orders = pgTable('orders', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: text('email').notNull(),
   form_type: text('form_type').notNull(), // form1, form2
@@ -13,7 +13,10 @@ const orders = pgTable('orders', {
   is_paid: boolean('is_paid').default(false),
   yookassa_payment_id: text('yookassa_payment_id'),
   yookassa_status: text('yookassa_status'),
-});
+  external_id: text('external_id'),
+}, (table) => ({
+  externalIdUnique: unique('orders_external_id_unique').on(table.external_id),
+}));
 
 const documents = pgTable('documents', {
   id: uuid('id').defaultRandom().primaryKey(),
