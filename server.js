@@ -120,7 +120,7 @@ app.post('/yookassa-webhook-tilda', express.json(), async (req, res) => {
     return res.status(400).send('❌ Нет tilda_orderid');
   }
 
-  
+
   try {
     const [order] = await db
         .select()
