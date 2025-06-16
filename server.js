@@ -193,48 +193,49 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
 });
 
 app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), (req, res) => {
-  return res.status(200)
+  // ⚡️ Моментальный ответ Tilda (в течение <5 сек)
+  res.status(200).send('OK');
 
-  const data = req.body;
-  console.log('📥 Получены данные формы от Tilda:', data);
+  // 🔄 Асинхронная обработка заявки в фоне
+  setImmediate(async () => {
+    const data = req.body;
+    console.log('📥 Получены данные формы от Tilda:', data);
 
-  if (!data.email) {
-    console.warn('❌ Нет email в данных формы');
-    return res.status(400).json({ error: 'Не указан email' });
-  }
+    if (!data.email) {
+      console.warn('❌ Нет email в данных формы');
+      return;
+    }
 
-  if (data.form !== 'form1' && data.form !== 'form2' && data.form !== 'form3' && data.form !== 'form4') {
-    console.warn('❌ Некорректный form:', data.form);
-    return res.status(400).json({ error: 'Некорректный form' });
-  }
+    if (!['form1', 'form2', 'form3', 'form4'].includes(data.form)) {
+      console.warn('❌ Некорректный form:', data.form);
+      return;
+    }
 
-  const orderId = uuidv4();
+    const orderId = uuidv4();
+    console.log('📝 Создаём заказ с ID:', orderId);
 
-  console.log('📝 Создаём заказ с ID:', orderId);
+    try {
+      await db.insert(orders).values({
+        id: orderId,
+        email: data.email,
+        form_type: data.form,
+        form_data: data,
+        status: 'pending',
+        is_paid: true,
+        paid_at: new Date(),
+      });
 
-  try {
-    await db.insert(orders).values({
-      id: orderId,
-      email: data.email,
-      form_type: data.form,
-      form_data: data,
-      status: 'pending',
-      is_paid: true,
-      paid_at: new Date(),
-    });
+      await startSectionGenerationForMultipleDocs({ orderId, email: data.email, data });
+      await trySendTildaOrderById(orderId);
 
-    // 🚀 Запускаем генерацию
-    /*await startSectionGenerationForMultipleDocs({ orderId, email: data.email, data });
-    await trySendTildaOrderById(orderId);*/
+      console.log(`✅ Заявка ${orderId} обработана и генерация запущена`);
 
-    console.log(`✅ Заявка ${orderId} обработана и генерация запущена`);
-    return res.status(200).json({ status: 'started', orderId });
-
-  } catch (err) {
-    console.error('❌ Ошибка обработки заявки:', err);
-    return res.status(500).json({ error: 'Ошибка сервера' });
-  }
+    } catch (err) {
+      console.error('❌ Ошибка обработки заявки:', err);
+    }
+  });
 });
+
 
 
 async function safeSendFull(docx, email, formType = 'plan', retries = 3, delayMs = 3000) {
