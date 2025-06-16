@@ -1,6 +1,6 @@
 const { pgTable, text, jsonb, uuid, timestamp, boolean, integer} = require('drizzle-orm/pg-core');
 
-export const orders = pgTable('orders', {
+const orders = pgTable('orders', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: text('email').notNull(),
   form_type: text('form_type').notNull(), // form1, form2
