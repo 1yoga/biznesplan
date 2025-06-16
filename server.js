@@ -202,34 +202,57 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
   }
 
   if (data.form !== 'form1' && data.form !== 'form2' && data.form !== 'form3' && data.form !== 'form4') {
-    console.warn('❌ Некорректный form:', data.form);
+    console.warn('❌ Некорректный form:', data.formname);
     return res.status(400).json({ error: 'Некорректный form' });
   }
 
-  const orderId = uuidv4();
+  let orderId;
+  let paymentId;
+
+  try {
+    const parsedPayment = typeof data.payment === 'string' ? JSON.parse(data.payment) : data.payment;
+    orderId = parsedPayment?.orderid;
+    paymentId = parsedPayment?.systranid;
+  } catch (err) {
+    console.warn('⚠️ Не удалось распарсить поле payment:', data.payment);
+  }
+
+  if (!orderId) {
+    console.warn('❌ Нет external orderId');
+    return;
+  }
+
+  // 🛑 Проверка — не обрабатываем повторно
+  const existing = await db.query.orders.findFirst({
+    where: (o, { eq }) => eq(o.external_id, externalOrderId)
+  });
+
+  if (existing) {
+    console.warn(`⚠️ Заказ с external_id=${externalOrderId} уже существует. Прерываем.`);
+    return;
+  }
 
   console.log('📝 Создаём заказ с ID:', orderId);
 
-  try {
-    await db.insert(orders).values({
-      id: orderId,
-      email: data.email,
-      form_type: data.form,
-      form_data: data,
-      status: 'pending',
-      is_paid: true,
-      paid_at: new Date(),
-    });
+  await db.insert(orders).values({
+    id: orderId,
+    email: data.email,
+    form_type: data.formname,
+    form_data: data,
+    status: 'pending',
+    yookassa_payment_id: paymentId,
+    yookassa_status: 'pending'
+  });
 
-    // 🚀 Запускаем генерацию
-    await startSectionGenerationForMultipleDocs({ orderId, email: data.email, data });
-    await trySendTildaOrderById(orderId);
+  try {
+    startSectionGenerationForMultipleDocs({ orderId, email: data.email, data }).catch(console.error);
 
     console.log(`✅ Заявка ${orderId} обработана и генерация запущена`);
     return res.status(200).json({ status: 'started', orderId });
 
   } catch (err) {
-    console.error('❌ Ошибка обработки заявки:', err);
+    console.error('❌ Ошибка создания оплаты или записи заказа:', err);
+    await db.update(orders).set({ status: 'error' }).where(eq(orders.id, orderId));
     return res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
