@@ -104,6 +104,8 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
 });
 
 app.post('/yookassa-webhook-tilda', express.json(), async (req, res) => {
+  const data = req.body;
+  console.log('📥 Получены данные от Yookassa:', data);
   try {
     const body = req.body;
     if (body.event !== 'payment.succeeded') return res.sendStatus(200);
