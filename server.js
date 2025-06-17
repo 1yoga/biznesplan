@@ -249,7 +249,7 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
 app.post('/explanatory-webhook', express.urlencoded({ extended: true }), (req, res) => {
   const data = req.body;
   console.log('📥 Получены данные формы от Tilda:', data);
-  return res.status(200)
+  return res.sendStatus(200);
 });
 
 app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (req, res) => {
