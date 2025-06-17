@@ -1,51 +1,49 @@
 const generatePromptExplanatory = require('./generatePromptExplanatory');
-const {safeGptCall} = require("../utils");
+const { safeGptCall } = require('../utils');
 
 module.exports = async function generatePromptForExplanatory(data) {
     try {
         const reasonSource = data.reasonSource?.trim();
 
-        // Если пользователь сам указал причину — генерим 1 объяснительную
+        // Если пользователь сам ввёл причину — одна объяснительная
         if (reasonSource === 'У меня есть причина') {
             return [generatePromptExplanatory(data)];
         }
 
-        // Если нужно придумать 3 варианта — просим GPT сгенерировать причины и описания
+        // GPT придумывает причины для короткой ситуации вроде "опоздал на 2 часа"
         const messages = [
             {
                 role: 'system',
-                content: 'Ты кадровик. Придумай 3 разных уважительных причины и краткое описание ситуации для объяснительной записки. Формат вывода строго соблюдай.'
+                content: `Ты специалист по кадрам. По краткому описанию ситуации придумай 3 разные уважительные причины, объясняющие это поведение. Не повторяй формулировку описания. Ответ должен быть строго в формате:
+
+1. Причина: ...
+2. Причина: ...
+3. Причина: ...`
             },
             {
                 role: 'user',
-                content: `Составь 3 причины и краткое описание каждой ситуации для объяснительной от сотрудника ${data.fullName}, занимающего должность ${data.position} в организации ${data.organization}. Инцидент произошёл ${data.incidentDate}. Формат:
-
-1. Причина: ...\nОписание: ...
-2. Причина: ...\nОписание: ...
-3. Причина: ...\nОписание: ...`
+                content: `Описание: ${data.description}`
             }
         ];
 
-        const gptResponse = await safeGptCall({ messages, max_tokens: 1024 });
+        const gptResponse = await safeGptCall({ messages, max_tokens: 512 });
         const content = gptResponse.choices?.[0]?.message?.content || '';
 
-        const matches = content.match(/\d+\.\s*Причина:\s*(.*?)\nОписание:\s*(.*?)(?=(\n\d+\.|$))/gs);
+        const matches = content.match(/\d+\.\s*Причина:\s*(.*?)(?=\n\d+\.|$)/gs);
 
         if (!matches || matches.length === 0) {
-            throw new Error('GPT не вернул корректный список причин и описаний');
+            throw new Error('GPT не вернул корректный список причин');
         }
 
         return matches.map(entry => {
             const reason = entry.match(/Причина:\s*(.*)/)?.[1]?.trim();
-            const description = entry.match(/Описание:\s*(.*)/)?.[1]?.trim();
 
             const filledData = {
                 ...data,
-                reason,
-                description,
+                reason, // подставляем новую причину
             };
 
-            return generatePromptExplanatory(filledData);
+            return generatePromptExplanatory(filledData); // генерируем финальный prompt
         });
     } catch (err) {
         console.error('❌ Ошибка в generatePromptForExplanatory:', err.message);
