@@ -3,10 +3,10 @@ const { safeGptCall } = require('../utils');
 
 module.exports = async function generatePromptForExplanatory(data) {
     try {
-        const reasonSource = data.reasonSource?.trim();
+        const reason = data.reason?.trim();
 
         // Если пользователь сам ввёл причину — одна объяснительная
-        if (reasonSource === 'У меня есть причина') {
+        if (reason !== 'Придумайте за меня') {
             return [generatePromptExplanatory(data)];
         }
 
