@@ -202,7 +202,7 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
 
   if (!data.email || !data.docType || !data.fullName || !data.description) {
     console.warn('❌ Не хватает обязательных полей');
-    return res.status(400).json({ error: 'Заполните все обязательные поля' });
+    return res.status(200).send('Missing email');
   }
 
   await db.insert(orders).values({
@@ -242,7 +242,7 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
   } catch (err) {
     console.error('❌ Ошибка создания оплаты или записи заказа:', err);
     await db.update(orders).set({ status: 'error' }).where(eq(orders.id, orderId));
-    return res.status(500).json({ error: 'Ошибка сервера' });
+    return res.status(200).send('Ошибка сервера, попробуйте позже');
   }
 });
 
@@ -252,12 +252,12 @@ app.post('/explanatory-webhook', express.urlencoded({ extended: true }), async (
 
   if (!data.email) {
     console.warn('❌ Нет email в данных формы');
-    return res.status(400).json({ error: 'Не указан email' });
+    return res.status(200).send('Missing email');
   }
 
   if (data.form !== 'explanatory') {
     console.warn('❌ Некорректный form:', data.form);
-    return res.status(400).json({ error: 'Некорректный form' });
+    return res.status(200).send('Invalid form');
   }
 
   let externalId;
@@ -273,10 +273,9 @@ app.post('/explanatory-webhook', express.urlencoded({ extended: true }), async (
 
   if (!externalId) {
     console.warn('❌ Нет external orderId');
-    return res.status(400).json({ error: 'Не указан external_id' });
+    return res.status(200).send('Missing external_id');
   }
 
-  // 🛑 Проверка — заказ уже создан
   const existing = await db
       .select()
       .from(orders)
@@ -285,7 +284,7 @@ app.post('/explanatory-webhook', express.urlencoded({ extended: true }), async (
 
   if (existing.length > 0) {
     console.warn(`⚠️ Заказ с external_id=${externalId} уже существует. Прерываем.`);
-    return res.status(200).json({ status: 'already exists', orderId: externalId });
+    return res.status(200).send(`Already exists: ${externalId}`);
   }
 
   const orderId = uuidv4();
@@ -304,16 +303,15 @@ app.post('/explanatory-webhook', express.urlencoded({ extended: true }), async (
 
   try {
     startSectionGenerationForMultipleDocs({ orderId: orderId, email: data.email, data }).catch(console.error);
-
     console.log(`✅ Заявка ${externalId} обработана, ID = ${orderId}`);
-    return res.status(200).json({ status: 'started', orderId: orderId });
-
+    return res.status(200).send(`Started: ${orderId}`);
   } catch (err) {
     console.error('❌ Ошибка при генерации:', err);
     await db.update(orders).set({ status: 'error' }).where(eq(orders.id, orderId));
-    return res.status(500).json({ error: 'Ошибка сервера' });
+    return res.status(200).send('Ошибка генерации');
   }
 });
+
 
 app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (req, res) => {
   const data = req.body;
@@ -321,12 +319,12 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
 
   if (!data.email) {
     console.warn('❌ Нет email в данных формы');
-    return res.status(400).json({ error: 'Не указан email' });
+    return res.status(200).send('Missing email');
   }
 
   if (!['form1', 'form2', 'form3', 'form4'].includes(data.form)) {
     console.warn('❌ Некорректный form:', data.form);
-    return res.status(400).json({ error: 'Некорректный form' });
+    return res.status(200).send('Invalid form');
   }
 
   let externalId;
@@ -342,7 +340,7 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
 
   if (!externalId) {
     console.warn('❌ Нет external orderId');
-    return res.status(400).json({ error: 'Не указан external_id' });
+    return res.status(200).send('Missing external_id');
   }
 
   // 🛑 Проверка — заказ уже создан
@@ -354,7 +352,7 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
 
   if (existing.length > 0) {
     console.warn(`⚠️ Заказ с external_id=${externalId} уже существует. Прерываем.`);
-    return res.status(200).json({ status: 'already exists', orderId: externalId });
+    return res.status(200).send(`Already exists: ${externalId}`);
   }
 
   const orderId = uuidv4();
@@ -375,12 +373,12 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
     startSectionGenerationForMultipleDocs({ orderId: orderId, email: data.email, data }).catch(console.error);
 
     console.log(`✅ Заявка ${externalId} обработана, ID = ${orderId}`);
-    return res.status(200).json({ status: 'started', orderId: orderId });
+    return res.status(200).send(`Started: ${orderId}`);
 
   } catch (err) {
     console.error('❌ Ошибка при генерации:', err);
     await db.update(orders).set({ status: 'error' }).where(eq(orders.id, orderId));
-    return res.status(500).json({ error: 'Ошибка сервера' });
+    return res.status(200).send('Ошибка генерации');
   }
 });
 
