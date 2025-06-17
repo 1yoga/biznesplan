@@ -246,7 +246,7 @@ app.post('/explanatory-submit', express.urlencoded({ extended: true }), async (r
   }
 });
 
-app.post('/explanatory-webhook', express.json(), async (req, res) => {
+app.post('/explanatory-webhook', express.urlencoded({ extended: true }), async (req, res) => {
   const data = req.body;
   console.log('📥 Получены данные формы от Tilda:', data);
 
