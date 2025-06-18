@@ -465,7 +465,7 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
       id: documentId,
       order_id: orderId,
       gpt_prompt: prompt,
-      doc_type: data.page,
+      doc_type: data.form,
       status: 'pending'
     });
 
