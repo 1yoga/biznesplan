@@ -69,7 +69,7 @@ app.use(cors({
 app.use(express.json());
 
 
-app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, res) => {
+app.post('/create-order', express.urlencoded({ extended: true }), async (req, res) => {
   const data = req.body;
   console.log('📥 Получены данные формы от Tilda:', data);
 
@@ -121,7 +121,7 @@ app.post('/tilda-submit', express.urlencoded({ extended: true }), async (req, re
       yookassa_status: payment.status
     }).where(eq(orders.id, orderId));
 
-    startSectionGenerationForMultipleDocs({ orderId, email: data.email, data }).catch(console.error);
+    //startSectionGenerationForMultipleDocs({ orderId, email: data.email, data }).catch(console.error);
 
     console.log(res)
     console.log(payment.confirmation.confirmation_url)
