@@ -11,6 +11,7 @@ const generatePromptForm2 = require('./services/tilda/promptForm2');
 const generatePromptForm3 = require('./services/tilda/promptForm3');
 const generatePromptForm4 = require('./services/tilda/promptForm4');
 const generatePromptForExplanatory = require('./services/explanatory/generatePromptForExplanatory');
+const generatePromptForContract = require('./services/contract/generatePromptForContract');
 const { TILDA_STRUCTURE, systemPromptForm1, systemPromptForm2, sectionTitles, systemPromptExplanatory} = require('./services/consts');
 
 const YooKassa = require('yookassa');
@@ -103,8 +104,8 @@ app.post('/create-order', express.urlencoded({ extended: true }), async (req, re
 
     const paymentPayload = buildPaymentParams({ amount, returnUrl, email: data.email, orderId });
     const yookassa = new YooKassa({
-      shopId: process.env.YOOKASSA_SHOP_ID_PLAN,
-      secretKey: process.env.YOOKASSA_SECRET_KEY_PLAN,
+      shopId: process.env.YOOKASSA_SHOP_ID_FORMS,
+      secretKey: process.env.YOOKASSA_SECRET_KEY_FORMS,
     });
 
     const payment = await yookassa.createPayment(paymentPayload, orderId);
@@ -250,7 +251,7 @@ app.post('/explanatory-webhook', express.urlencoded({ extended: true }), async (
     return res.status(200).send('Missing email');
   }
 
-  if (data.form !== 'explanatory') {
+  if (data.form !== 'explanatory' && data.form !== 'contract') {
     console.warn('❌ Некорректный form:', data.form);
     return res.status(200).send('Invalid form');
   }
@@ -448,6 +449,10 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
       prompts = await generatePromptForExplanatory(data);
       break;
 
+    case 'contract':
+      prompts = await generatePromptForContract(data);
+      break;
+
     default:
       throw new Error(`Неизвестное имя формы: ${data.form}`);
   }
@@ -476,6 +481,12 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
     }
     else if(data.form === 'explanatory'){
       await startExplanatoryGeneration({
+        documentId,
+        basePrompt: prompt
+      });
+    }
+    else if(data.form === 'contract'){
+      await startContractGeneration({
         documentId,
         basePrompt: prompt
       });
