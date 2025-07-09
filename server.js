@@ -71,21 +71,16 @@ app.use(express.json());
 
 app.post('/create-order', express.urlencoded({ extended: true }), async (req, res) => {
   const data = req.body;
-  console.log('📥 Получены данные формы от Tilda:', data);
+  console.log('📥 Получены данные формы:', data);
 
   if (!data.email) {
     console.warn('❌ Нет email в данных формы');
     return res.status(400).json({ error: 'Не указан email' });
   }
 
-  if (!data.source_url) {
-    console.warn('❌ Нет source_url в данных формы');
-    return res.status(400).json({ error: 'Не указан source_url' });
-  }
-
-  if (data.formname !== 'form1' && data.formname !== 'form2' && data.formname !== 'form3' && data.formname !== 'form4') {
-    console.warn('❌ Некорректный formname:', data.formname);
-    return res.status(400).json({ error: 'Некорректный formname' });
+  if (data.form !== 'general_no_idea' && data.form !== 'general_with_idea') {
+    console.warn('❌ Некорректный form:', data.form);
+    return res.status(400).json({ error: 'Некорректный form' });
   }
 
   const orderId = uuidv4();
@@ -95,7 +90,7 @@ app.post('/create-order', express.urlencoded({ extended: true }), async (req, re
   await db.insert(orders).values({
     id: orderId,
     email: data.email,
-    form_type: data.formname,
+    form_type: data.form,
     form_data: data,
     status: 'pending'
   });
@@ -294,7 +289,7 @@ app.post('/explanatory-webhook', express.urlencoded({ extended: true }), async (
     id: orderId,
     external_id: externalId,
     email: data.email,
-    form_type: data.formname,
+    form_type: data.form,
     form_data: data,
     status: 'pending',
     yookassa_payment_id: paymentId,
@@ -362,7 +357,7 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
     id: orderId,
     external_id: externalId,
     email: data.email,
-    form_type: data.formname,
+    form_type: data.form,
     form_data: data,
     status: 'pending',
     yookassa_payment_id: paymentId,
