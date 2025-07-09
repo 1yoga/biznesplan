@@ -104,8 +104,8 @@ app.post('/create-order', express.urlencoded({ extended: true }), async (req, re
 
     const paymentPayload = buildPaymentParams({ amount, returnUrl, email: data.email, orderId });
     const yookassa = new YooKassa({
-      shopId: process.env.YOOKASSA_SHOP_ID_FORMS,
-      secretKey: process.env.YOOKASSA_SECRET_KEY_FORMS,
+      shopId: process.env.YOOKASSA_SHOP_ID_TEST,
+      secretKey: process.env.YOOKASSA_SECRET_KEY_TEST,
     });
 
     const payment = await yookassa.createPayment(paymentPayload, orderId);
