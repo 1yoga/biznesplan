@@ -119,7 +119,6 @@ app.post('/create-order', express.urlencoded({ extended: true }), async (req, re
 
     //startSectionGenerationForMultipleDocs({ orderId, email: data.email, data }).catch(console.error);
 
-    console.log(res)
     console.log(payment.confirmation.confirmation_url)
 
     return res.json({ confirmation_url: payment.confirmation.confirmation_url });
