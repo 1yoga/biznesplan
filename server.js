@@ -56,7 +56,11 @@ console.error = (...args) => {
 
 app.use(cors({
   origin: function (origin, callback) {
-    const allowedOrigins = ['https://biznesplan.online', 'https://boxinfox.ru'];
+    const allowedOrigins = [
+      'https://biznesplan.online',
+      'https://boxinfox.ru',
+      'https://biznesplanonline.vercel.app',
+      'http://localhost:3000'];
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
