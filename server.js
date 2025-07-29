@@ -156,11 +156,11 @@ app.post('/yookassa-webhook', express.json(), async (req, res) => {
     const [order] = await db
         .select()
         .from(orders)
-        .where(eq(orders.external_id, orderId)) // <-- именно external_id
+        .where(eq(orders.id, orderId))
         .limit(1);
 
     if (!order) {
-      console.warn(`❌ Заказ не найден по external_id: ${orderId}`);
+      console.warn(`❌ Заказ не найден по orderId: ${orderId}`);
       return res.sendStatus(404);
     }
 
