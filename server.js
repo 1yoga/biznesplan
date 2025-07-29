@@ -60,6 +60,7 @@ app.use(cors({
       'https://biznesplan.online',
       'https://boxinfox.ru',
       'https://biznesplanonline.vercel.app',
+      'https://zakazat-biznesplan.online',
       'http://localhost:3000'];
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -132,6 +133,67 @@ app.post('/create-order', express.urlencoded({ extended: true }), async (req, re
     await db.update(orders).set({ status: 'error' }).where(eq(orders.id, orderId));
     return res.status(500).json({ error: 'Ошибка сервера' });
   }
+});
+
+app.post('/yookassa-webhook', express.json(), async (req, res) => {
+  console.log('📥 Получены данные от Yookassa:', req.body);
+
+  const body = req.body;
+
+  if (!body || body.event !== 'payment.succeeded') {
+    return res.sendStatus(200); // игнорируем ненужные эвенты
+  }
+
+  const payment = body.object;
+  const orderId = payment.metadata?.tilda_orderid;
+
+  if (!orderId) {
+    console.warn('❌ Нет tilda_orderid в metadata');
+    return res.status(400).send('❌ Нет tilda_orderid');
+  }
+
+  try {
+    const [order] = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.external_id, orderId)) // <-- именно external_id
+        .limit(1);
+
+    if (!order) {
+      console.warn(`❌ Заказ не найден по external_id: ${orderId}`);
+      return res.sendStatus(404);
+    }
+
+    if (order.yookassa_status === 'succeeded') {
+      console.log(`ℹ️ Оплата по заказу ${orderId} уже подтверждена`);
+      return res.sendStatus(200);
+    }
+
+    const now = new Date();
+
+    await db
+        .update(orders)
+        .set({
+          yookassa_status: 'succeeded',
+          is_paid: true,
+          paid_at: now,
+          updated_at: now,
+        })
+        .where(eq(orders.id, order.id)); // тут можно по ID, потому что мы его уже получили
+
+    console.log(`✅ Оплата по заказу ${orderId} подтверждена. Генерируем.`);
+
+    await startSectionGenerationForMultipleDocs({ orderId: order.id, email: order.email, data:order.form_data }).catch(console.error);
+
+    await trySendTildaOrderById(order.id);
+
+    return res.sendStatus(200);
+
+  } catch (err) {
+    console.error('❌ Ошибка при обработке Yookassa webhook:', err);
+    return res.sendStatus(500);
+  }
+
 });
 
 app.post('/yookassa-webhook-tilda', express.json(), async (req, res) => {
