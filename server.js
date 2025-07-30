@@ -4,7 +4,12 @@ const cors = require('cors');
 const { db, plans, orders, documents, sections } = require('./db');
 const { eq } = require('drizzle-orm');
 const { v4: uuidv4 } = require('uuid');
+const { OpenAI } = require('openai')
 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  organization: process.env.OPENAI_ORG_ID,
+})
 const generateWord = require('./services/word');
 const generatePromptForm1 = require('./services/tilda/promptForm1');
 const generatePromptForm2 = require('./services/tilda/promptForm2');
@@ -17,7 +22,6 @@ const { TILDA_STRUCTURE, systemPromptForm1, systemPromptForm2, sectionTitles, sy
 const YooKassa = require('yookassa');
 const {sendFull, sendToAdminsOnly} = require("./services/mailer");
 const {preprocessText, buildPaymentParams, safeGptCall} = require("./services/utils");
-const { OpenAI } = require('openai')
 const generateWordForExplanatory = require("./services/generateWordForExplanatory");
 const {logs} = require("./schema");
 
@@ -440,6 +444,28 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
     console.error('❌ Ошибка при генерации:', err);
     await db.update(orders).set({ status: 'error' }).where(eq(orders.id, orderId));
     return res.status(200).send('Ошибка генерации');
+  }
+});
+
+app.post('/gpt-call', async (req, res) => {
+  try {
+    const { messages, temperature = 0.7, max_tokens = 8192 } = req.body;
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: 'messages[] обязателен' });
+    }
+
+    const result = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages,
+      temperature,
+      max_tokens
+    });
+
+    return res.json(result);
+  } catch (err) {
+    console.error('❌ GPT ошибка в /gpt-call:', err);
+    return res.status(500).json({ error: 'Ошибка генерации' });
   }
 });
 
