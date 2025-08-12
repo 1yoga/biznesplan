@@ -89,27 +89,41 @@ function normalizeLines(text) {
         .map((l) => stripMarkdown(l).trimRight());
 }
 
-// Конвертируем "___" и любые "_ _ _" в полноценные линии с подчеркиванием
+// Экраним спецсимволы перед сборкой общего RegExp
+function escapeRe(s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Конвертируем плейсхолдеры "_" в подписи/линии нормальной ширины
 function renderInlinePlaceholders(s) {
     let out = String(s);
 
-    // 1) Специальные поля — сразу широкая линия (удобно заполнять)
+    // 1) Широкие поля: собираем безопасный шаблон из "простых" меток
     const wideLabels = [
         'ФИО', 'Паспорт', 'Адрес', 'ИНН', 'ОГРН', 'КПП', 'Банк', 'БИК',
-        'Расчетный счет', 'Р/с', 'Корр\\.?\\s*счет', 'К/с', 'Телефон', 'Email'
+        'Расчетный счет', 'Р/с', 'К/с', 'Телефон', 'Email'
     ];
-    const wideRe = new RegExp(`\\b(${wideLabels.join('|')})\\s*:\\s*_+\\b?`, 'gi');
-    out = out.replace(wideRe, (m, label) => `${label}: <span class="fill fill-lg">&nbsp;</span>`);
+    const widePattern = `(?:^|\\s)(${wideLabels.map(escapeRe).join('|')})\\s*:\\s*_+`;
+    const wideRe = new RegExp(widePattern, 'giu');
+    out = out.replace(wideRe, (_, label) => `${label}: <span class="fill fill-lg">&nbsp;</span>`);
 
-    // 2) Подписи вида "Продавец: __/__/" → две линии (подпись и расшифровка)
-    out = out.replace(/(Продавец|Покупатель)\s*:\s*__\/__\//gi,
-        (m, who) => `${who}: <span class="fill fill-md">&nbsp;</span> / <span class="fill fill-sm">&nbsp;</span> /`);
+    // 2) Отдельно — «Корр. счет / Корр счет / Корреспондентский счет/счёт»
+    // (варианты с точкой/без, ё/е, пробелами)
+    out = out.replace(
+        /(?:^|\s)((?:Корр(?:\.|)\\s*|Корреспондентский\\s*)сч[её]т)\\s*:\\s*_+/giu,
+        (_, label) => `${label}: <span class="fill fill-lg">&nbsp;</span>`
+    );
 
-    // 3) Любые группы подчёркиваний превращаем в линии.
-    // Ширина пропорциональна длине группы, но в разумных пределах.
-    out = out.replace(/_{1,}/g, (u) => {
+    // 3) Подписи вида "Продавец: __/__/" → две линии (подпись / расшифровка)
+    out = out.replace(
+        /(Продавец|Покупатель)\s*:\s*__\/__\//giu,
+        (_, who) => `${who}: <span class="fill fill-md">&nbsp;</span> / <span class="fill fill-sm">&nbsp;</span> /`
+    );
+
+    // 4) Любые группы подчёркиваний -> линия подходящей ширины
+    out = out.replace(/_{2,}/g, (u) => {
         const n = u.length;
-        const em = Math.max(8, Math.min(40, Math.round(n * 2))); // 1 "_" ~ 2em, но не более 40em
+        const em = Math.max(8, Math.min(40, Math.round(n * 2))); // 1 "_" ~ 2em
         return `<span class="fill" style="min-width:${em}em">&nbsp;</span>`;
     });
 
