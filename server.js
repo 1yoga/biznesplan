@@ -22,7 +22,7 @@ const { TILDA_STRUCTURE, systemPromptForm1, systemPromptContract, sectionTitles,
 const YooKassa = require('yookassa');
 const {sendFull, sendToAdminsOnly} = require("./services/mailer");
 const {preprocessText, buildPaymentParams, safeGptCall} = require("./services/utils");
-const generateWordForExplanatory = require("./services/generateWordForExplanatory");
+const generateWordForExplanatory = require("./services/explanatory/generateWordForExplanatory");
 const {logs} = require("./schema");
 
 const app = express();
@@ -740,6 +740,13 @@ async function generateTildaBuffers(orderId) {
             return [];
           }
           return await generateWordForExplanatory(order.form_data, clean);
+        }
+        if (doc.doc_type === 'contract') {
+          if (!order) {
+            console.warn(`❌ Заказ ${orderId} не найден`);
+            return [];
+          }
+          return await generateWordForContract(order.form_data, clean);
         }
         return await generateWord(clean, null, TILDA_STRUCTURE);
       })
