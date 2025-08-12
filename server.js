@@ -23,6 +23,7 @@ const YooKassa = require('yookassa');
 const {sendFull, sendToAdminsOnly} = require("./services/mailer");
 const {preprocessText, buildPaymentParams, safeGptCall} = require("./services/utils");
 const generateWordForExplanatory = require("./services/explanatory/generateWordForExplanatory");
+const generateWordForContract = require("./services/contract/generateWordForContract");
 const {logs} = require("./schema");
 
 const app = express();
