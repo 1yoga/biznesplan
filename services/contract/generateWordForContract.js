@@ -65,18 +65,17 @@ async function generateWordForContract(formData, gptText, options = {}) {
     }
 };
 
+// === ПОДМЕНА/ДОБАВЛЕНИЕ ФУНКЦИЙ ДЛЯ КРАСИВЫХ "ПРОПИСНЫХ ЛИНИЙ" ===
+
 function stripMarkdown(line) {
     let t = String(line);
-
-    // сносим markdown-заголовки "#", "##", "###"
-    t = t.replace(/^\s*#{1,6}\s+/,'');
-    // убираем жирность/курсив
-    t = t.replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1')
-        .replace(/\*(.+?)\*/g, '$1').replace(/_(.+?)_/g, '$1');
-    // инлайн-код
-    t = t.replace(/`([^`]+)`/g, '$1');
-    // маркеры списков в единый вид
-    t = t.replace(/^\s*[\*\-•]\s+/, '— '); // * -, • -> длинное тире
+    t = t.replace(/^\s*#{1,6}\s+/, '');                  // #, ##, ### ...
+    t = t.replace(/\*\*(.+?)\*\*/g, '$1')               // **bold**
+        .replace(/__(.+?)__/g, '$1')                   // __bold__
+        .replace(/\*(.+?)\*/g, '$1')                   // *italic*
+        .replace(/_(.+?)_/g, '$1')                     // _italic_
+        .replace(/`([^`]+)`/g, '$1');                  // `code`
+    t = t.replace(/^\s*[\*\-•]\s+/, '— ');              // списки -> длинное тире
     return t.trimEnd();
 }
 
@@ -90,27 +89,60 @@ function normalizeLines(text) {
         .map((l) => stripMarkdown(l).trimRight());
 }
 
-// 2) Более точные правила заголовков
-const isH1 = (s) => /^\s*договор(\b|\s)/i.test(s.trim());
+// Конвертируем "___" и любые "_ _ _" в полноценные линии с подчеркиванием
+function renderInlinePlaceholders(s) {
+    let out = String(s);
 
-// только заголовки верхнего уровня "1. Текст" (НЕ 1.1., 2.3.1. и т.п.)
-// и/или явные названия разделов — строго с начала строки
+    // 1) Специальные поля — сразу широкая линия (удобно заполнять)
+    const wideLabels = [
+        'ФИО', 'Паспорт', 'Адрес', 'ИНН', 'ОГРН', 'КПП', 'Банк', 'БИК',
+        'Расчетный счет', 'Р/с', 'Корр\\.?\\s*счет', 'К/с', 'Телефон', 'Email'
+    ];
+    const wideRe = new RegExp(`\\b(${wideLabels.join('|')})\\s*:\\s*_+\\b?`, 'gi');
+    out = out.replace(wideRe, (m, label) => `${label}: <span class="fill fill-lg">&nbsp;</span>`);
+
+    // 2) Подписи вида "Продавец: __/__/" → две линии (подпись и расшифровка)
+    out = out.replace(/(Продавец|Покупатель)\s*:\s*__\/__\//gi,
+        (m, who) => `${who}: <span class="fill fill-md">&nbsp;</span> / <span class="fill fill-sm">&nbsp;</span> /`);
+
+    // 3) Любые группы подчёркиваний превращаем в линии.
+    // Ширина пропорциональна длине группы, но в разумных пределах.
+    out = out.replace(/_{1,}/g, (u) => {
+        const n = u.length;
+        const em = Math.max(8, Math.min(40, Math.round(n * 2))); // 1 "_" ~ 2em, но не более 40em
+        return `<span class="fill" style="min-width:${em}em">&nbsp;</span>`;
+    });
+
+    return out;
+}
+
+// Нормализуем "шапку" (город/дата) в виде одной чёткой строки
+function normalizeHeaderLine(s) {
+    const cityDateRe = /^\s*г\.\s*.*$/i;
+    if (cityDateRe.test(s)) {
+        return 'г. ___    «__» ______ 20__ г.'; // единый аккуратный вид
+    }
+    // Иногда дата идёт отдельно:
+    const onlyDate = /^«[_\s]*»\s*[_\s]+20__\s*г\.\s*$/i;
+    if (onlyDate.test(s)) {
+        return 'г. ___    «__» ______ 20__ г.';
+    }
+    return s;
+}
+
+// Заголовки/маркировка
+const isH1 = (s) => /^\s*договор(\b|\s)/i.test(s.trim());
 const isTopNumberedHeading = (s) =>
     /^\s*\d+\.\s+[А-ЯA-ZЁ]/.test(s) && !/^\s*\d+\.\d+\./.test(s);
 const isNamedHeading = (s) =>
     /^\s*(предмет договора|права и обязанности сторон|цена и порядок расч[её]тов|срок действия|порядок расторжения|порядок (приемк|передач)и|конфиденциал|права на результ|ответственность|форс-?мажор|разрешение споров|прочие условия|заключительные положения|реквизиты и подписи сторон|приложени[ея])\b/i
         .test(s);
 const isH2 = (s) => isTopNumberedHeading(s) || isNamedHeading(s);
-
-// распознаём шапку с городом/датой — выравниваем вправо
 const isHeaderRightAligned = (s) =>
-    /^\s*г\.\s*.+(?:«.+»\s*\d{2,4}\s*г\.)?$/i.test(s) ||
-    /^«__»\s*______\s*20__\s*г\.\s*$/i.test(s);
-
-// списки: поддерживаем —, -, •, * в начале
+    /^\s*г\.\s*.+(?:«.+»\s*\d{2,4}\s*г\.)?$/i.test(s) || /^«__»\s*______\s*20__\s*г\.\s*$/i.test(s);
 const isBullet = (s) => /^\s*(—|-|•|\*)\s+/.test(s);
 
-// 3) Сборка Word-HTML
+// === ОБНОВЛЁННЫЙ РЕНДЕР В WORD-HTML (.doc) ===
 function buildWordHtmlFromText(text) {
     const HEAD = [
         '<!DOCTYPE html>',
@@ -129,6 +161,12 @@ function buildWordHtmlFromText(text) {
         '    ul { margin: 0 0 8pt 18pt; }',
         '    li { margin: 0 0 4pt; }',
         '    .doc-header { text-align: right; margin-bottom: 12pt; }',
+        '    .fill { display:inline-block; border-bottom:1px solid #000; min-width:10em; }',
+        '    .fill.fill-xs{ min-width:6em; }',
+        '    .fill.fill-sm{ min-width:10em; }',
+        '    .fill.fill-md{ min-width:16em; }',
+        '    .fill.fill-lg{ min-width:24em; }',
+        '    .fill.fill-xl{ min-width:32em; }',
         '  </style>',
         '  <!--[if gte mso 9]><xml><w:WordDocument>',
         '    <w:View>Print</w:View><w:Zoom>100</w:Zoom><w:Compatibility/>',
@@ -138,44 +176,55 @@ function buildWordHtmlFromText(text) {
     ].join('\n');
 
     const FOOT = '\n</body>\n</html>';
-    const lines = normalizeLines(text);
+    const escapeHtml = (str) => String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-    const escapeHtml = (str) =>
-        String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const lines = normalizeLines(text);
 
     let i = 0;
     const out = [];
 
     while (i < lines.length) {
-        const lnRaw = lines[i] || '';
-        const ln = lnRaw.replace(/\s+$/g, '');
+        let ln = lines[i] || '';
+        ln = normalizeHeaderLine(ln);
+        const rawForInline = renderInlinePlaceholders(ln);
+        const lnEsc = escapeHtml(rawForInline).replace(/&lt;span class=&quot;fill.*?&lt;\/span&gt;/g, (m) =>
+            // Возвращаем теги <span class="fill">, которые ранее экранировали
+            m.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"')
+        );
 
-        if (!ln.trim()) { out.push('<p>&nbsp;</p>'); i++; continue; }
-
-        if (isH1(ln)) { out.push(`<h1>${escapeHtml(ln)}</h1>`); i++; continue; }
-
-        if (isHeaderRightAligned(ln)) {
-            out.push(`<p class="doc-header">${escapeHtml(ln)}</p>`); i++; continue;
+        if (!ln.trim()) {
+            out.push('<p>&nbsp;</p>');
+            i++; continue;
         }
 
-        if (isH2(ln)) { out.push(`<h2>${escapeHtml(ln)}</h2>`); i++; continue; }
+        if (isH1(ln)) { out.push(`<h1>${lnEsc}</h1>`); i++; continue; }
+
+        if (isHeaderRightAligned(ln)) {
+            out.push(`<p class="doc-header">${lnEsc}</p>`); i++; continue;
+        }
+
+        if (isH2(ln)) { out.push(`<h2>${lnEsc}</h2>`); i++; continue; }
 
         if (isBullet(ln)) {
             const items = [];
             while (i < lines.length && isBullet(lines[i] || '')) {
-                const liText = String(lines[i]).replace(/^\s*(—|-|•|\*)\s+/, '');
-                items.push(`<li>${escapeHtml(liText)}</li>`);
+                const liText = renderInlinePlaceholders(String(lines[i]).replace(/^\s*(—|-|•|\*)\s+/, ''));
+                const liEsc = escapeHtml(liText).replace(/&lt;span class=&quot;fill.*?&lt;\/span&gt;/g, (m) =>
+                    m.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"')
+                );
+                items.push(`<li>${liEsc}</li>`);
                 i++;
             }
             out.push(`<ul>${items.join('')}</ul>`);
             continue;
         }
 
-        out.push(`<p>${escapeHtml(ln)}</p>`);
+        out.push(`<p>${lnEsc}</p>`);
         i++;
     }
 
     return HEAD + '\n' + out.join('\n') + FOOT;
 }
+
 
 module.exports = generateWordForContract;

@@ -591,7 +591,8 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
     console.log(`📦 Все документы сгенерированы. Статус заказа ${orderId} → 'completed'`);
     const buffers = await generateTildaBuffers(orderId);
     console.log('📨 Отправляем все документы администраторам...');
-    await sendToAdminsOnly(buffers, email);
+    const format = data.form === 'contract' ? 'doc' : 'docx'
+    await sendToAdminsOnly(buffers, email, format);
     console.log('✅ Все документы отправлены администраторам');
   }
 }

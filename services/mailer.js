@@ -81,11 +81,11 @@ module.exports = {
     console.log('📥 Уведомление отправлено администратору:', info2.messageId);
   },
 
-  async sendToAdminsOnly(buffersArray, userEmail) {
+  async sendToAdminsOnly(buffersArray, userEmail, format) {
     const transporter = createTransporter();
 
     const attachments = buffersArray.map((buffer, index) => ({
-      filename: `Документ ${index + 1}.docx`,
+      filename: `Документ ${index + 1}.${format}`,
       content: buffer
     }));
 
