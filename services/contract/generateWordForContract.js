@@ -65,15 +65,52 @@ async function generateWordForContract(formData, gptText, options = {}) {
     }
 };
 
-// ===== ВСПОМОГАТЕЛЬНЫЕ =====
+function stripMarkdown(line) {
+    let t = String(line);
 
-function escapeHtml(str) {
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+    // сносим markdown-заголовки "#", "##", "###"
+    t = t.replace(/^\s*#{1,6}\s+/,'');
+    // убираем жирность/курсив
+    t = t.replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1')
+        .replace(/\*(.+?)\*/g, '$1').replace(/_(.+?)_/g, '$1');
+    // инлайн-код
+    t = t.replace(/`([^`]+)`/g, '$1');
+    // маркеры списков в единый вид
+    t = t.replace(/^\s*[\*\-•]\s+/, '— '); // * -, • -> длинное тире
+    return t.trimEnd();
 }
 
+function normalizeLines(text) {
+    return String(text)
+        .replace(/\r\n/g, '\n')
+        .replace(/\u00A0/g, ' ')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .split('\n')
+        .map((l) => stripMarkdown(l).trimRight());
+}
+
+// 2) Более точные правила заголовков
+const isH1 = (s) => /^\s*договор(\b|\s)/i.test(s.trim());
+
+// только заголовки верхнего уровня "1. Текст" (НЕ 1.1., 2.3.1. и т.п.)
+// и/или явные названия разделов — строго с начала строки
+const isTopNumberedHeading = (s) =>
+    /^\s*\d+\.\s+[А-ЯA-ZЁ]/.test(s) && !/^\s*\d+\.\d+\./.test(s);
+const isNamedHeading = (s) =>
+    /^\s*(предмет договора|права и обязанности сторон|цена и порядок расч[её]тов|срок действия|порядок расторжения|порядок (приемк|передач)и|конфиденциал|права на результ|ответственность|форс-?мажор|разрешение споров|прочие условия|заключительные положения|реквизиты и подписи сторон|приложени[ея])\b/i
+        .test(s);
+const isH2 = (s) => isTopNumberedHeading(s) || isNamedHeading(s);
+
+// распознаём шапку с городом/датой — выравниваем вправо
+const isHeaderRightAligned = (s) =>
+    /^\s*г\.\s*.+(?:«.+»\s*\d{2,4}\s*г\.)?$/i.test(s) ||
+    /^«__»\s*______\s*20__\s*г\.\s*$/i.test(s);
+
+// списки: поддерживаем —, -, •, * в начале
+const isBullet = (s) => /^\s*(—|-|•|\*)\s+/.test(s);
+
+// 3) Сборка Word-HTML
 function buildWordHtmlFromText(text) {
     const HEAD = [
         '<!DOCTYPE html>',
@@ -101,62 +138,32 @@ function buildWordHtmlFromText(text) {
     ].join('\n');
 
     const FOOT = '\n</body>\n</html>';
+    const lines = normalizeLines(text);
 
-    const lines = String(text).split('\n');
-
-    const isH1 = (s) => /^\s*договор\b/i.test(s);
-    const isH2 = (s) =>
-        /^\s*\d+\.\s*[А-ЯA-ZЁ][^]*$/.test(s.trim()) ||
-        /^\s*предмет договора\b/i.test(s) ||
-        /^\s*права и обязанности сторон\b/i.test(s) ||
-        /цена\b|порядок расч[её]тов/i.test(s) ||
-        /срок действия|расторж/i.test(s) ||
-        /порядок (приемк|передач)/i.test(s) ||
-        /конфиденциал/i.test(s) ||
-        /права на результ/i.test(s) ||
-        /ответственность|неустойк/i.test(s) ||
-        /форс-?мажор/i.test(s) ||
-        /разрешение споров|подсудност/i.test(s) ||
-        /прочие условия/i.test(s) ||
-        /реквизиты и подписи сторон/i.test(s) ||
-        /приложени[ея]/i.test(s);
-
-    // Сгруппируем последовательности маркеров в <ul>
-    const isBullet = (s) => /^\s*(—|-|•)\s+/.test(s);
+    const escapeHtml = (str) =>
+        String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
     let i = 0;
     const out = [];
 
     while (i < lines.length) {
-        let raw = lines[i] || '';
-        const line = raw.replace(/\s+$/g, '');
+        const lnRaw = lines[i] || '';
+        const ln = lnRaw.replace(/\s+$/g, '');
 
-        // Пустая строка -> просто разрыв абзаца
-        if (!line.trim()) {
-            out.push('<p>&nbsp;</p>');
-            i++;
-            continue;
+        if (!ln.trim()) { out.push('<p>&nbsp;</p>'); i++; continue; }
+
+        if (isH1(ln)) { out.push(`<h1>${escapeHtml(ln)}</h1>`); i++; continue; }
+
+        if (isHeaderRightAligned(ln)) {
+            out.push(`<p class="doc-header">${escapeHtml(ln)}</p>`); i++; continue;
         }
 
-        // Заголовок H1 (первое "ДОГОВОР ...")
-        if (isH1(line)) {
-            out.push(`<h1>${escapeHtml(line)}</h1>`);
-            i++;
-            continue;
-        }
+        if (isH2(ln)) { out.push(`<h2>${escapeHtml(ln)}</h2>`); i++; continue; }
 
-        // Заголовки H2 (разделы)
-        if (isH2(line)) {
-            out.push(`<h2>${escapeHtml(line)}</h2>`);
-            i++;
-            continue;
-        }
-
-        // Список (маркированные пункты подряд)
-        if (isBullet(line)) {
+        if (isBullet(ln)) {
             const items = [];
             while (i < lines.length && isBullet(lines[i] || '')) {
-                const liText = String(lines[i]).replace(/^\s*(—|-|•)\s+/, '');
+                const liText = String(lines[i]).replace(/^\s*(—|-|•|\*)\s+/, '');
                 items.push(`<li>${escapeHtml(liText)}</li>`);
                 i++;
             }
@@ -164,8 +171,7 @@ function buildWordHtmlFromText(text) {
             continue;
         }
 
-        // Обычный абзац
-        out.push(`<p>${escapeHtml(line)}</p>`);
+        out.push(`<p>${escapeHtml(ln)}</p>`);
         i++;
     }
 
