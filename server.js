@@ -16,8 +16,8 @@ const generatePromptForm2 = require('./services/tilda/promptForm2');
 const generatePromptForm3 = require('./services/tilda/promptForm3');
 const generatePromptForm4 = require('./services/tilda/promptForm4');
 const generatePromptForExplanatory = require('./services/explanatory/generatePromptForExplanatory');
-const generatePromptForContract = require('./services/contract/generatePromptForContract');
-const { TILDA_STRUCTURE, systemPromptForm1, systemPromptForm2, sectionTitles, systemPromptExplanatory} = require('./services/consts');
+const generatePromptContract = require('./services/contract/generatePromptContract');
+const { TILDA_STRUCTURE, systemPromptForm1, systemPromptContract, sectionTitles, systemPromptExplanatory} = require('./services/consts');
 
 const YooKassa = require('yookassa');
 const {sendFull, sendToAdminsOnly} = require("./services/mailer");
@@ -541,7 +541,7 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
       break;
 
     case 'contract':
-      prompts = await generatePromptForContract(data);
+      prompts = [ generatePromptContract(data)];
       break;
 
     default:
@@ -627,6 +627,38 @@ async function startExplanatoryGeneration({ documentId, basePrompt }) {
   }
 }
 
+async function startContractGeneration({ documentId, basePrompt }) {
+  try {
+    const messages = [
+      { role: 'system', content: systemPromptContract },
+      { role: 'user', content: basePrompt }
+    ];
+
+    const result = await safeGptCall({
+      messages,
+      max_tokens: 2048
+    });
+
+    const response = result.choices?.[0]?.message?.content || 'Ошибка генерации';
+    const wordCount = response.split(/\s+/).filter(Boolean).length;
+
+    await db.update(documents).set({
+      gpt_response: response,
+      word_count: wordCount,
+      status: 'completed',
+      updated_at: new Date()
+    }).where(eq(documents.id, documentId));
+
+    console.log(`📝 Договор сгенерирован`);
+
+  } catch (err) {
+    console.error('❌ Ошибка генерации Договора:', err);
+    await db.update(documents).set({
+      status: 'error',
+      updated_at: new Date()
+    }).where(eq(documents.id, documentId));
+  }
+}
 
 async function startSectionGeneration({ documentId, basePrompt, systemPrompt }) {
   const sectionsToInsert = sectionTitles.map((s, idx) => {
