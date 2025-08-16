@@ -65,8 +65,7 @@ app.use(cors({
       'https://biznesplan.online',
       'https://boxinfox.ru',
       'https://biznesplanonline.vercel.app',
-      'https://zakazat-biznesplan.online',
-      'http://localhost:3000'];
+      'https://zakazat-biznesplan.online'];
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -78,7 +77,6 @@ app.use(cors({
   optionsSuccessStatus: 204
 }));
 app.use(express.json());
-
 
 app.post('/create-order', express.urlencoded({ extended: true }), async (req, res) => {
   const data = req.body;
@@ -139,7 +137,7 @@ app.post('/create-order', express.urlencoded({ extended: true }), async (req, re
 });
 
 app.post('/yookassa-webhook', express.json(), async (req, res) => {
-  console.log('📥 Получены данные от Yookassa:', req.body);
+  console.log('📥 Получены данные от yookassa-webhook:', req.body);
 
   const body = req.body;
 
@@ -148,11 +146,11 @@ app.post('/yookassa-webhook', express.json(), async (req, res) => {
   }
 
   const payment = body.object;
-  const orderId = payment.metadata?.tilda_orderid;
+  const orderId = payment.metadata?.orderId;
 
   if (!orderId) {
-    console.warn('❌ Нет tilda_orderid в metadata');
-    return res.status(400).send('❌ Нет tilda_orderid');
+    console.warn('❌ Нет orderid в metadata');
+    return res.status(400).send('❌ Нет orderid');
   }
 
   try {
@@ -182,11 +180,37 @@ app.post('/yookassa-webhook', express.json(), async (req, res) => {
           paid_at: now,
           updated_at: now,
         })
-        .where(eq(orders.id, order.id)); // тут можно по ID, потому что мы его уже получили
+        .where(eq(orders.id, order.id));
 
     console.log(`✅ Оплата по заказу ${orderId} подтверждена. Генерируем.`);
 
-    await startSectionGenerationForMultipleDocs({ orderId: order.id, email: order.email, data:order.form_data }).catch(console.error);
+    if (order.yandex_client_id) {
+      try {
+        await axios.get('https://mc.yandex.ru/collect', {
+          params: {
+            tid: '103573073', // ID счётчика
+            cid: order.yandex_client_id,
+            t: 'event',
+            ea: 'payment_success',
+            et: Math.floor(Date.now() / 1000), // timestamp в секундах
+            dl: 'https://zakazat-biznesplan.online', // адрес сайта
+            ms: 'eb6ec56f-37e7-41d1-847a-057fcb7064c4',
+          }
+        });
+        console.log(`📡 Цель "payment_success" отправлена через Measurement Protocol для client_id: ${order.yandex_client_id}`);
+      } catch (err) {
+        console.warn('⚠️ Ошибка при отправке события через Measurement Protocol:', err.response?.data || err.message);
+      }
+    }
+
+    const parsedFormData = typeof order.form_data === 'string'
+        ? JSON.parse(order.form_data)
+        : order.form_data;
+
+    await startSectionGenerationForMultipleDocs({ orderId: order.id, email: order.email, data: parsedFormData }).catch(err => {
+      console.error('❌ Ошибка в генерации документов:', err.message);
+      console.error(err.stack);
+    });
 
     await trySendTildaOrderById(order.id);
 
@@ -376,7 +400,6 @@ app.post('/explanatory-webhook', express.urlencoded({ extended: true }), async (
   }
 });
 
-
 app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (req, res) => {
   const data = req.body;
   console.log('📥 Получены данные формы от Tilda:', data);
@@ -515,7 +538,6 @@ async function trySendTildaOrderById(orderId, retries = 100, intervalMs = 30000)
   console.warn(`⚠️ Документы по заказу ${orderId} не были отправлены после ${retries} попыток`);
 }
 
-
 async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
   let prompts;
 
@@ -595,6 +617,7 @@ async function startSectionGenerationForMultipleDocs({ orderId, email, data }) {
     console.log('✅ Все документы отправлены администраторам');
   }
 }
+
 async function startExplanatoryGeneration({ documentId, basePrompt }) {
   try {
     const messages = [
