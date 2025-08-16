@@ -89,7 +89,7 @@ app.post('/create-order', express.urlencoded({ extended: true }), async (req, re
     return res.status(400).json({ error: 'Не указан email' });
   }
 
-  if (data.form !== 'general_no_idea' && data.form !== 'general_with_idea') {
+  if (data.form !== 'general_no_idea' && data.form !== 'general_with_idea'&& data.form !== 'sockontract_no_idea'&& data.form !== 'sockontract_with_idea') {
     console.warn('❌ Некорректный form:', data.form);
     return res.status(400).json({ error: 'Некорректный form' });
   }
@@ -103,19 +103,21 @@ app.post('/create-order', express.urlencoded({ extended: true }), async (req, re
     email: data.email,
     form_type: data.form,
     form_data: data,
-    status: 'pending'
+    status: 'pending',
+    yandex_client_id: data.yandex_client_id || null,
   });
 
-  const returnUrl = data.source_url || 'https://biznesplan.online';
+  const returnUrl = data.source_url || 'https://zakazat-biznesplan.online';
 
   try {
     const amount = data.price;
     console.log('💳 Сумма платежа:', amount);
 
     const paymentPayload = buildPaymentParams({ amount, returnUrl, email: data.email, orderId });
+
     const yookassa = new YooKassa({
-      shopId: process.env.YOOKASSA_SHOP_ID_TEST,
-      secretKey: process.env.YOOKASSA_SECRET_KEY_TEST,
+      shopId: process.env.YOOKASSA_SHOP_ID_PLAN,
+      secretKey: process.env.YOOKASSA_SECRET_KEY_PLAN,
     });
 
     const payment = await yookassa.createPayment(paymentPayload, orderId);
@@ -126,10 +128,6 @@ app.post('/create-order', express.urlencoded({ extended: true }), async (req, re
       yookassa_payment_id: payment.id,
       yookassa_status: payment.status
     }).where(eq(orders.id, orderId));
-
-    //startSectionGenerationForMultipleDocs({ orderId, email: data.email, data }).catch(console.error);
-
-    console.log(payment.confirmation.confirmation_url)
 
     return res.json({ confirmation_url: payment.confirmation.confirmation_url });
 
@@ -433,6 +431,7 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
     status: 'pending',
     yookassa_payment_id: paymentId,
     yookassa_status: 'pending',
+    yandex_client_id: data.yandex_client_id || nul
   });
 
   try {
