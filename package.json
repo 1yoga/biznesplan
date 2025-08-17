@@ -18,6 +18,7 @@
   "homepage": "https://github.com/1yoga/biznesplan#readme",
   "description": "",
   "dependencies": {
+    "axios": "^1.11.0",
     "cors": "^2.8.5",
     "docx": "^9.4.1",
     "dotenv": "^16.5.0",
