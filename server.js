@@ -5,6 +5,7 @@ const { db, plans, orders, documents, sections } = require('./db');
 const { eq } = require('drizzle-orm');
 const { v4: uuidv4 } = require('uuid');
 const { OpenAI } = require('openai')
+const axios = require('axios');
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
