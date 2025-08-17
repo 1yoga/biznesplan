@@ -472,6 +472,7 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
 
   const orderId = uuidv4();
   console.log(`📝 Создаём заказ ${orderId} для external_id=${externalId}`);
+  console.log(data.yandex_client_id);
 
   await db.insert(orders).values({
     id: orderId,
