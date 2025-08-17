@@ -14,6 +14,7 @@ const orders = pgTable('orders', {
   yookassa_payment_id: text('yookassa_payment_id'),
   yookassa_status: text('yookassa_status'),
   external_id: text('external_id'),
+  yandex_client_id: text('yandex_client_id'),
 }, (table) => ({
   externalIdUnique: unique('orders_external_id_unique').on(table.external_id),
 }));
