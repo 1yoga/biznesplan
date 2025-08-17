@@ -488,8 +488,6 @@ app.post('/biznesplan-webhook', express.urlencoded({ extended: true }), async (r
   });
 
   try {
-    startSectionGenerationForMultipleDocs({ orderId: orderId, email: data.email, data }).catch(console.error);
-
     console.log(`✅ Заявка ${externalId} обработана, ID = ${orderId}`);
     return res.status(200).send(`Started: ${orderId}`);
 
