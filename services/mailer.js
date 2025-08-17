@@ -44,7 +44,7 @@ module.exports = {
     const text = `
 Здравствуйте!
 
-Спасибо за оплату. Во вложении — ваш${buffers.length > 1 ? 'и' : ''} ${baseName.toLowerCase()}${buffers.length > 1 ? 'и' : ''}, подготовленн${buffers.length > 1 ? 'ые' : 'ый'} специально для вас.
+Спасибо за оплату. Во вложении — ваш${buffers.length > 1 ? 'и' : ''} ${baseName.toLowerCase()}${buffers.length > 1 ? 'ы' : ''}, подготовленн${buffers.length > 1 ? 'ые' : 'ый'} специально для вас.
 
 Если у вас не открывается файл, обновите Word или используйте Google Документы.
 
